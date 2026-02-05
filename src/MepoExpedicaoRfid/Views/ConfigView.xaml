@@ -1,0 +1,64 @@
+<UserControl x:Class="MepoExpedicaoRfid.Views.ConfigView"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 mc:Ignorable="d">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="24">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <TextBlock Text="Configurações" Style="{StaticResource H1}" Margin="0,0,0,16"/>
+
+          <Grid Grid.Row="1">
+
+<Grid>
+  <Border Style="{StaticResource CardBorder}">
+    <StackPanel>
+      <TextBlock Text="Supabase" FontWeight="SemiBold"/>
+      <TextBlock Text="{Binding SupabaseUrl}" Opacity="0.75" Margin="0,6,0,0"/>
+      <TextBlock Text="{Binding DeviceId, StringFormat=Device: {0}}" Opacity="0.75" Margin="0,2,0,0"/>
+
+      <Separator Margin="0,14,0,14"/>
+
+      <TextBlock Text="RFID" FontWeight="SemiBold"/>
+      <UniformGrid Columns="2" Margin="0,10,0,0">
+        <StackPanel Margin="0,0,10,10">
+          <TextBlock Text="Power" Opacity="0.75"/>
+          <TextBox Text="{Binding Power}" />
+        </StackPanel>
+        <StackPanel Margin="0,0,0,10">
+          <TextBlock Text="Debounce (ms)" Opacity="0.75"/>
+          <TextBox Text="{Binding DebounceMs}" />
+        </StackPanel>
+        <StackPanel Margin="0,0,10,10">
+          <TextBlock Text="Batch flush (ms)" Opacity="0.75"/>
+          <TextBox Text="{Binding BatchFlushMs}" />
+        </StackPanel>
+        <StackPanel Margin="0,0,0,10">
+          <TextBlock Text="Batch size" Opacity="0.75"/>
+          <TextBox Text="{Binding BatchSize}" />
+        </StackPanel>
+        <StackPanel Margin="0,0,10,0">
+          <TextBlock Text="UI update (ms)" Opacity="0.75"/>
+          <TextBox Text="{Binding UiUpdateMs}" />
+        </StackPanel>
+        <StackPanel>
+          <TextBlock Text="Reader mode" Opacity="0.75"/>
+          <TextBox Text="{Binding ReaderMode}" />
+        </StackPanel>
+      </UniformGrid>
+
+      <TextBlock Text="Obs: alterações aqui são apenas visuais no template. Para persistir, salve no appsettings.json." Opacity="0.6" Margin="0,12,0,0"/>
+    </StackPanel>
+  </Border>
+</Grid>
+
+          </Grid>
+        </Grid>
+      </ScrollViewer>
+    </UserControl>

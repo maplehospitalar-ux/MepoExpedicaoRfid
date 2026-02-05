@@ -1,0 +1,488 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{FFAD45F3-D7E8-4232-8457-45CC7CB5D414}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>UHFAPP</RootNamespace>
+    <AssemblyName>UHFAPP</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Office.Interop.Excel, Version=12.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>dll\Microsoft.Office.Interop.Excel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Vbe.Interop, Version=12.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>dll\Microsoft.Vbe.Interop.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=4.0.3.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>dll\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="office, Version=12.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>dll\office.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Web.Extensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UHFControl, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BaseForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BaseForm.Designer.cs">
+      <DependentUpon>BaseForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ChoiceNumberForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ChoiceNumberForm.Designer.cs">
+      <DependentUpon>ChoiceNumberForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\authenticate\AuthenticateForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\authenticate\AuthenticateForm.Designer.cs">
+      <DependentUpon>AuthenticateForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\authenticate\AuthenticateAPI.cs" />
+    <Compile Include="custom\CryptoTransmitForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\CryptoTransmitForm.Designer.cs">
+      <DependentUpon>CryptoTransmitForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\m775Authenticate\M775AuthenticateAPI.cs" />
+    <Compile Include="custom\m775Authenticate\M775AuthenticateForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\m775Authenticate\M775AuthenticateForm.Designer.cs">
+      <DependentUpon>M775AuthenticateForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\R5ModifyParametersForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\R5ModifyParametersForm.Designer.cs">
+      <DependentUpon>R5ModifyParametersForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\SetR3Form.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\SetR3Form.Designer.cs">
+      <DependentUpon>SetR3Form.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\ReadEPCFormT2.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\ReadEPCFormT2.Designer.cs">
+      <DependentUpon>ReadEPCFormT2.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\TempertureInfo.cs" />
+    <Compile Include="custom\TempertureTag2\TempertureTag2MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\TempertureTag2MainForm.Designer.cs">
+      <DependentUpon>TempertureTag2MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\TempertureTag2ReadEPCForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\TempertureTag2ReadEPCForm.Designer.cs">
+      <DependentUpon>TempertureTag2ReadEPCForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag2\UHFAPI_Temperture.cs">
+    </Compile>
+    <Compile Include="custom\TempertureTag\TempertureTagForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\TempertureTag\TempertureTagForm.Designer.cs">
+      <DependentUpon>TempertureTagForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag\MainForm2.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\TempertureTag\MainForm2.Designer.cs">
+      <DependentUpon>MainForm2.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag\ReadEPCForm2.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="custom\TempertureTag\ReadEPCForm2.Designer.cs">
+      <DependentUpon>ReadEPCForm2.cs</DependentUpon>
+    </Compile>
+    <Compile Include="custom\TempertureTag\UHFAPI_RFMicronMagnus_S3.cs" />
+    <Compile Include="DeviceInfo.cs" />
+    <Compile Include="excel\ExcelUtils.cs" />
+    <Compile Include="interfaces\IAutoReceive.cs" />
+    <Compile Include="multidevice\DeviceListForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="multidevice\DeviceListForm.Designer.cs">
+      <DependentUpon>DeviceListForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="multidevice\MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="multidevice\MainForm.Designer.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="multidevice\TagInfo.cs" />
+    <Compile Include="Receive\SerialPortReceive.cs" />
+    <Compile Include="Receive\UdpReceive.cs" />
+    <Compile Include="RFID-HF\HF15693API.cs" />
+    <Compile Include="RFID-HF\HF14443API.cs" />
+    <Compile Include="RFID-HF\HFMainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RFID-HF\HFMainForm.Designer.cs">
+      <DependentUpon>HFMainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RFID-HF\ISO15693Entity.cs" />
+    <Compile Include="RFID-HF\PSAMAPI.cs" />
+    <Compile Include="UHFUpgradeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UHFUpgradeForm.Designer.cs">
+      <DependentUpon>UHFUpgradeForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="utils\CheckUtils.cs" />
+    <Compile Include="utils\Common.cs" />
+    <Compile Include="ConfigForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConfigForm.Designer.cs">
+      <DependentUpon>ConfigForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="utils\DataConvert.cs" />
+    <Compile Include="utils\EpcInfo.cs" />
+    <Compile Include="utils\FileManage.cs" />
+    <Compile Include="frmWaitingBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="frmWaitingBox.designer.cs">
+      <DependentUpon>frmWaitingBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="interfaces\IUHF.cs" />
+    <Compile Include="interfaces\IUHFProtocolParse.cs" />
+    <Compile Include="utils\IPConfig.cs" />
+    <Compile Include="Kill_LockForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kill_LockForm.Designer.cs">
+      <DependentUpon>Kill_LockForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainForm.Designer.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="utils\MessageBoxEx.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="BaseForm.resx">
+      <DependentUpon>BaseForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ChoiceNumberForm.resx">
+      <DependentUpon>ChoiceNumberForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConfigForm.resx">
+      <DependentUpon>ConfigForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\authenticate\AuthenticateForm.resx">
+      <DependentUpon>AuthenticateForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\CryptoTransmitForm.resx">
+      <DependentUpon>CryptoTransmitForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\m775Authenticate\M775AuthenticateForm.resx">
+      <DependentUpon>M775AuthenticateForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\R5ModifyParametersForm.resx">
+      <DependentUpon>R5ModifyParametersForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\SetR3Form.resx">
+      <DependentUpon>SetR3Form.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\TempertureTag2\ReadEPCFormT2.resx">
+      <DependentUpon>ReadEPCFormT2.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\TempertureTag2\TempertureTag2MainForm.resx">
+      <DependentUpon>TempertureTag2MainForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\TempertureTag2\TempertureTag2ReadEPCForm.resx">
+      <DependentUpon>TempertureTag2ReadEPCForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\TempertureTag\TempertureTagForm.resx">
+      <DependentUpon>TempertureTagForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\TempertureTag\MainForm2.resx">
+      <DependentUpon>MainForm2.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="custom\TempertureTag\ReadEPCForm2.resx">
+      <DependentUpon>ReadEPCForm2.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="frmWaitingBox.resx">
+      <DependentUpon>frmWaitingBox.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Kill_LockForm.resx">
+      <DependentUpon>Kill_LockForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MainForm.resx">
+      <DependentUpon>MainForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="multidevice\DeviceListForm.resx">
+      <DependentUpon>DeviceListForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="multidevice\MainForm.resx">
+      <DependentUpon>MainForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ReadWriteTagForm.resx">
+      <DependentUpon>ReadWriteTagForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ReadEPCForm.resx">
+      <DependentUpon>ReadEPCForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ReceiveEPC.resx">
+      <DependentUpon>ReceiveEPC.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RFID-HF\HFMainForm.resx">
+      <DependentUpon>HFMainForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TestForm.resx">
+      <DependentUpon>TestForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TipForm.resx">
+      <DependentUpon>TipForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UHFUpgradeForm.resx">
+      <DependentUpon>UHFUpgradeForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="WaitForm.resx">
+      <DependentUpon>WaitForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UHFUpgradeFormEx.resx">
+      <DependentUpon>UHFUpgradeFormEx.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <None Include="app.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="ReadEPCFormData.cs" />
+    <Compile Include="ReadWriteTagForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ReadWriteTagForm.Designer.cs">
+      <DependentUpon>ReadWriteTagForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ReadEPCForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ReadEPCForm.Designer.cs">
+      <DependentUpon>ReadEPCForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ReceiveEPC.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ReceiveEPC.Designer.cs">
+      <DependentUpon>ReceiveEPC.cs</DependentUpon>
+    </Compile>
+    <Compile Include="utils\StringUtils.cs" />
+    <Compile Include="TestForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TestForm.Designer.cs">
+      <DependentUpon>TestForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TipForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TipForm.Designer.cs">
+      <DependentUpon>TipForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UHFAPI.cs" />
+    <Compile Include="utils\Debug.cs" />
+    <Compile Include="UHFTAGInfo.cs" />
+    <Compile Include="utils\Utils.cs" />
+    <Compile Include="WaitForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="WaitForm.Designer.cs">
+      <DependentUpon>WaitForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UHFUpgradeFormEx.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UHFUpgradeFormEx.Designer.cs">
+      <DependentUpon>UHFUpgradeFormEx.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="img\button_green_32px_500051_easyicon.net.png" />
+    <Content Include="img\button_light_blue_32px_500052_easyicon.net.png" />
+    <Content Include="修改说明.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

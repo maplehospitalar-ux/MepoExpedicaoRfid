@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="clr-namespace:MepoExpedicaoRfid.ViewModels"
+                    xmlns:v="clr-namespace:MepoExpedicaoRfid.Views">
+
+  <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+    <v:DashboardView />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:FilaViewModel}">
+    <v:FilaView />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:SaidaViewModel}">
+    <v:SaidaView />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:EntradaViewModel}">
+    <v:EntradaView />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:ConsultaTagViewModel}">
+    <v:ConsultaTagView />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:ConfigViewModel}">
+    <v:ConfigView />
+  </DataTemplate>
+
+</ResourceDictionary>

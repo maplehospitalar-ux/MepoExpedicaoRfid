@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- ApplicationIcon>Assets\app.ico</ApplicationIcon -->
+    <LangVersion>latest</LangVersion>
+    
+    <!-- CRÍTICO: Hardware RFID 32-bit -->
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- MVVM Toolkit -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    
+    <!-- UI Material Design -->
+    <PackageReference Include="MaterialDesignThemes" Version="5.1.0" />
+    <PackageReference Include="MaterialDesignColors" Version="3.1.0" />
+    
+    <!-- Supabase SDK -->
+    <PackageReference Include="Supabase" Version="0.20.3" />
+    
+    <!-- Performance -->
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+    
+    <!-- SQLite para Offline -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    
+    <!-- WebSocket -->
+    <PackageReference Include="System.Net.WebSockets.Client" Version="4.3.2" />
+    
+    <!-- Logging -->
+    <PackageReference Include="Serilog" Version="3.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Content Include="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="runtimes\win-x86\native\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Copia UHFAPI.dll para raiz do output (P/Invoke precisa dela lá) -->
+  <Target Name="CopyNativeDLL" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)runtimes\win-x86\native\UHFAPI.dll" 
+          DestinationFolder="$(OutputPath)" 
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

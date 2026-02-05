@@ -1,0 +1,43 @@
+﻿# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]ogs/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# Visual Studio
+.vs/
+*.vsp
+*.vspscc
+
+# Temporary files
+*.tmp
+*.log
+*.cache
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+rfid_buffer.db
+
+# Backup files
+*.backup
+*.bak
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Executables
+*.exe
+*.dll
+*.pdb
+!src/MepoExpedicaoRfid/runtimes/**/*.dll
