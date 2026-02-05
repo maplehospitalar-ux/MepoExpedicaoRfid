@@ -122,8 +122,6 @@ public static class Bootstrapper
             var nav = new NavigationViewModel();
 
             Log("Bootstrapper: Criando MainViewModel");
-            _ = realtime.ConnectAsync();
-            
             // ✅ CORREÇÃO CRÍTICA: Inicia o TagPipeline para conectar ao reader e processar tags
             Log("Bootstrapper: Iniciando TagPipeline...");
             await pipeline.StartAsync(); // ✅ AGUARDA a conexão completar antes de continuar

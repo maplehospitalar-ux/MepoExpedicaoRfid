@@ -57,6 +57,12 @@ public partial class FilaViewModel : ObservableObject
             _ = Refresh.ExecuteAsync(null);
         };
 
+        _realtime.OnNovoPedidoFila += (_, payload) =>
+        {
+            _log.Info("📥 Novo pedido recebido na fila");
+            _ = Refresh.ExecuteAsync(null);
+        };
+
         // Initial load
         _ = Refresh.ExecuteAsync(null);
     }

@@ -73,6 +73,7 @@ public partial class SaidaViewModel : ObservableObject
             });
 
             _pipeline.ResetSessionCounters();
+            await _realtime.BroadcastReaderStartAsync(SessionId);
             _log.Info($"Sessão de saída ativa: {SessionId}");
         });
 
@@ -111,6 +112,10 @@ public partial class SaidaViewModel : ObservableObject
                     catch (Exception taskEx)
                     {
                         _log.Error($"❌ Erro ao iniciar leitura em background: {taskEx.Message}", taskEx);
+                    }
+                    finally
+                    {
+                        _busyReading = false;
                     }
                 });
                 
