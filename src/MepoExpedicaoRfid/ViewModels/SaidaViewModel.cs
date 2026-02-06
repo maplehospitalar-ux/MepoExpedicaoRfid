@@ -73,6 +73,7 @@ public partial class SaidaViewModel : ObservableObject
             });
 
             _pipeline.ResetSessionCounters();
+            await _realtime.BroadcastReaderStartAsync(SessionId);
             _log.Info($"Sessão de saída ativa: {SessionId}");
         });
 
@@ -154,6 +155,7 @@ public partial class SaidaViewModel : ObservableObject
         Finalizar = new AsyncRelayCommand(async () =>
         {
             if (string.IsNullOrWhiteSpace(SessionId)) return;
+            await _realtime.BroadcastReaderStopAsync(SessionId);
             var ok = await _supabase.FinalizarSessaoEdgeAsync(SessionId, "saida").ConfigureAwait(true);
             if (ok)
             {
@@ -168,6 +170,7 @@ public partial class SaidaViewModel : ObservableObject
         Cancelar = new AsyncRelayCommand(async () =>
         {
             if (string.IsNullOrWhiteSpace(SessionId)) return;
+            await _realtime.BroadcastReaderStopAsync(SessionId);
             var ok = await _supabase.CancelarSessaoEdgeAsync(SessionId, "Cancelado pelo operador").ConfigureAwait(true);
             if (ok)
             {
@@ -180,6 +183,28 @@ public partial class SaidaViewModel : ObservableObject
         });
 
         Limpar = new RelayCommand(() => _pipeline.ResetSessionCounters());
+
+        _realtime.OnReaderStopReceived += async (_, __) =>
+        {
+            _log.Info("Comando reader_stop recebido do Web");
+            if (_busyReading)
+            {
+                await _pipeline.EndReadingAsync();
+                _busyReading = false;
+            }
+        };
+
+        _realtime.OnSessionCancelReceived += async (_, payload) =>
+        {
+            var cancelSessionId = payload.TryGetProperty("session_id", out var sid)
+                ? sid.GetString()
+                : null;
+            if (cancelSessionId == SessionId)
+            {
+                _log.Info("Sessão cancelada remotamente pelo Web");
+                await Cancelar.ExecuteAsync(null);
+            }
+        };
 
         RefreshSnapshot();
     }

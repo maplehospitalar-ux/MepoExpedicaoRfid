@@ -308,9 +308,14 @@ public sealed class RealtimeService : IDisposable
                 if (root.TryGetProperty("payload", out var payloadProp))
                 {
                     // Extrai evento interno
-                    var innerEvent = payloadProp.TryGetProperty("event", out var evt) 
-                        ? evt.GetString() 
+                    var innerEvent = payloadProp.TryGetProperty("event", out var evt)
+                        ? evt.GetString()
                         : null;
+                    var innerPayload = payloadProp;
+                    if (payloadProp.TryGetProperty("payload", out var payloadInner))
+                    {
+                        innerPayload = payloadInner;
+                    }
 
                     _log.Info($"📨 Broadcast recebido: {innerEvent}");
 
@@ -318,19 +323,19 @@ public sealed class RealtimeService : IDisposable
                     switch (innerEvent)
                     {
                         case "reader_start":
-                            OnReaderStartReceived?.Invoke(this, payloadProp);
+                            OnReaderStartReceived?.Invoke(this, innerPayload.Clone());
                             break;
                         case "reader_stop":
-                            OnReaderStopReceived?.Invoke(this, payloadProp);
+                            OnReaderStopReceived?.Invoke(this, innerPayload.Clone());
                             break;
                         case "reader_pause":
-                            OnReaderPauseReceived?.Invoke(this, payloadProp);
+                            OnReaderPauseReceived?.Invoke(this, innerPayload.Clone());
                             break;
                         case "session_cancel":
-                            OnSessionCancelReceived?.Invoke(this, payloadProp);
+                            OnSessionCancelReceived?.Invoke(this, innerPayload.Clone());
                             break;
                         case "novo_pedido_fila":
-                            OnNovoPedidoFila?.Invoke(this, payloadProp);
+                            OnNovoPedidoFila?.Invoke(this, innerPayload.Clone());
                             break;
                     }
                 }
