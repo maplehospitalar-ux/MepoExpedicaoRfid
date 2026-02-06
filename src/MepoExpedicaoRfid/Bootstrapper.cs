@@ -118,7 +118,7 @@ public static class Bootstrapper
             var pipeline = new TagPipeline(reader, cfg.RFID, log, sessionManager, batchService, realtime);
 
             Log("Bootstrapper: Criando StatusViewModel e navegação");
-            var status = new StatusViewModel(supabase, reader, cfg, log);
+            var status = new StatusViewModel(supabase, reader, cfg, realtime, log);
             var nav = new NavigationViewModel();
 
             Log("Bootstrapper: Criando MainViewModel");
@@ -129,10 +129,10 @@ public static class Bootstrapper
             await pipeline.StartAsync(); // ✅ AGUARDA a conexão completar antes de continuar
 
             var vm = new MainViewModel(nav, status,
-                new DashboardViewModel(status, pipeline, log),
+                new DashboardViewModel(status, pipeline, realtime, log),
                 new FilaViewModel(fila, realtime, nav, log),
                 new SaidaViewModel(supabase, pipeline, tags, nav, cfg, sessionManager, realtime, log),
-                new EntradaViewModel(supabase, pipeline, nav, cfg, sessionManager, log),
+                new EntradaViewModel(supabase, pipeline, nav, cfg, sessionManager, realtime, log),
                 new ConsultaTagViewModel(tags, pipeline, log),
                 new ConfigViewModel(cfg, log));
 
@@ -141,7 +141,6 @@ public static class Bootstrapper
 
             Log("Bootstrapper: Iniciando serviços de background");
             _ = status.InitializeAsync();
-            _ = realtime.ConnectAsync();
             heartbeat.Start();
 
             Log("Bootstrapper: MainViewModel retornado com sucesso");

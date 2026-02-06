@@ -1,6 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Windows.Threading;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MepoExpedicaoRfid.Models;
@@ -99,7 +99,7 @@ public partial class ConsultaTagViewModel : ObservableObject
         
         // Limpar Movimentos na thread da UI
 #pragma warning disable CS4014
-        Dispatcher.CurrentDispatcher.BeginInvoke(() => Movimentos.Clear());
+        _ = Application.Current?.Dispatcher.InvokeAsync(() => Movimentos.Clear());
 
         try
         {
@@ -114,7 +114,7 @@ public partial class ConsultaTagViewModel : ObservableObject
             _log.Info($"Movimentos: {dto.Movimentos.Count} registros");
             
             // Atualizar UI na thread do Dispatcher
-            Dispatcher.CurrentDispatcher.BeginInvoke(() =>
+            _ = Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 if (dto.Current != null)
                 {

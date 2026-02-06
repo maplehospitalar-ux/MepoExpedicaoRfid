@@ -13,6 +13,7 @@ public partial class EntradaViewModel : ObservableObject
     private readonly NavigationViewModel _nav;
     private readonly AppConfig _cfg;
     private readonly SessionStateManager _session;
+    private readonly RealtimeService _realtime;
     private readonly AppLogger _log;
     private bool _busyReading = false;  // Previne múltiplas leituras simultâneas
 
@@ -34,13 +35,14 @@ public partial class EntradaViewModel : ObservableObject
     public IAsyncRelayCommand Cancelar { get; }
     public IRelayCommand Limpar { get; }
 
-    public EntradaViewModel(SupabaseService supabase, TagPipeline pipeline, NavigationViewModel nav, AppConfig cfg, SessionStateManager session, AppLogger log)
+    public EntradaViewModel(SupabaseService supabase, TagPipeline pipeline, NavigationViewModel nav, AppConfig cfg, SessionStateManager session, RealtimeService realtime, AppLogger log)
     {
         _supabase = supabase;
         _pipeline = pipeline;
         _nav = nav;
         _cfg = cfg;
         _session = session;
+        _realtime = realtime;
         _log = log;
 
         _pipeline.SnapshotUpdated += (_, __) => RefreshSnapshot();
@@ -104,6 +106,7 @@ public partial class EntradaViewModel : ObservableObject
                         });
 
                         _pipeline.ResetSessionCounters();
+                        await _realtime.BroadcastReaderStartAsync(result.SessionId);
                         _log.Info($"Sessão de entrada ativa: {result.SessionId}");
                     }
 
@@ -143,6 +146,10 @@ public partial class EntradaViewModel : ObservableObject
             _log.Info("⏳ Pausando leitura...");
             try
             {
+                if (!string.IsNullOrWhiteSpace(SessionId))
+                {
+                    await _realtime.BroadcastReaderStopAsync(SessionId);
+                }
                 await _pipeline.EndReadingAsync();
                 _busyReading = false;
                 IsReading = false;
@@ -165,6 +172,7 @@ public partial class EntradaViewModel : ObservableObject
             await _pipeline.EndReadingAsync();
             if (!string.IsNullOrWhiteSpace(SessionId))
             {
+                await _realtime.BroadcastReaderStopAsync(SessionId);
                 await _supabase.FinalizarSessaoEdgeAsync(SessionId, "entrada");
                 _session.EndSession();
             }
@@ -193,6 +201,7 @@ public partial class EntradaViewModel : ObservableObject
             var ok = await _supabase.CancelarSessaoEdgeAsync(SessionId, "Cancelado pelo operador").ConfigureAwait(true);
             if (ok)
             {
+                await _realtime.BroadcastReaderStopAsync(SessionId);
                 _log.Info("⛔ Sessão de entrada cancelada.");
                 _pipeline.ResetSessionCounters();
                 _session.CancelSession("Cancelado pelo operador");
@@ -223,6 +232,29 @@ public partial class EntradaViewModel : ObservableObject
             SessionId = "";
             EntradaId = "";
         });
+
+        _realtime.OnReaderStopReceived += async (_, __) =>
+        {
+            _log.Info("Comando reader_stop recebido do Web");
+            if (_busyReading || IsReading)
+            {
+                await _pipeline.EndReadingAsync();
+                _busyReading = false;
+                IsReading = false;
+            }
+        };
+
+        _realtime.OnSessionCancelReceived += async (_, payload) =>
+        {
+            var cancelSessionId = payload.TryGetProperty("session_id", out var sid)
+                ? sid.GetString()
+                : null;
+            if (cancelSessionId == SessionId)
+            {
+                _log.Info("Sessão de entrada cancelada remotamente pelo Web");
+                await Cancelar.ExecuteAsync(null);
+            }
+        };
 
         RefreshSnapshot();
     }

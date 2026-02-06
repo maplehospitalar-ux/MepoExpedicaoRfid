@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MepoExpedicaoRfid.Models;
@@ -12,6 +13,8 @@ public partial class FilaViewModel : ObservableObject
     private readonly RealtimeService _realtime;
     private readonly NavigationViewModel _nav;
     private readonly AppLogger _log;
+
+    public event EventHandler<JsonElement>? OnPedidoParaImpressao;
 
     public ObservableCollection<FilaItem> Pendentes => _fila.Pendentes;
     public ObservableCollection<FilaItem> EmSeparacao => _fila.EmSeparacao;
@@ -55,6 +58,23 @@ public partial class FilaViewModel : ObservableObject
         {
             _log.Info("✅ Realtime conectado - sincronizando fila");
             _ = Refresh.ExecuteAsync(null);
+        };
+
+        _realtime.OnNovoPedidoFila += async (_, payload) =>
+        {
+            _log.Info("Novo pedido na fila recebido via Realtime");
+
+            if (payload.TryGetProperty("print_data", out var printData))
+            {
+                var numero = printData.TryGetProperty("numero", out var n) ? n.GetString() : "?";
+                var cliente = printData.TryGetProperty("cliente_nome", out var c) ? c.GetString() : "?";
+                _log.Info($"Pedido {numero} - {cliente} -> Impressão Elgin I9");
+
+                OnPedidoParaImpressao?.Invoke(this, printData.Clone());
+            }
+
+            await _fila.RefreshAsync();
+            _log.Info("Fila atualizada");
         };
 
         // Initial load

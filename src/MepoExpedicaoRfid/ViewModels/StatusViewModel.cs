@@ -10,6 +10,7 @@ public partial class StatusViewModel : ObservableObject
     private readonly SupabaseService _supabase;
     private readonly IRfidReader _reader;
     private readonly AppConfig _cfg;
+    private readonly RealtimeService _realtime;
     private readonly AppLogger _log;
 
     private CancellationTokenSource? _cts;
@@ -22,11 +23,12 @@ public partial class StatusViewModel : ObservableObject
 
     public string? UserId { get; private set; } // placeholder (se você quiser decodificar JWT, adicione)
 
-    public StatusViewModel(SupabaseService supabase, IRfidReader reader, AppConfig cfg, AppLogger log)
+    public StatusViewModel(SupabaseService supabase, IRfidReader reader, AppConfig cfg, RealtimeService realtime, AppLogger log)
     {
         _supabase = supabase;
         _reader = reader;
         _cfg = cfg;
+        _realtime = realtime;
         _log = log;
     }
 
@@ -118,6 +120,8 @@ public partial class StatusViewModel : ObservableObject
                 {
                     if (_supabase.IsConnected)
                         await _supabase.HeartbeatAsync().ConfigureAwait(false);
+                    if (_realtime.IsConnected)
+                        await _realtime.BroadcastReaderStatusAsync("online").ConfigureAwait(false);
                 }
                 catch { }
                 try
