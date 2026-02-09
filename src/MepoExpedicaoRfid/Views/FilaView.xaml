@@ -234,20 +234,26 @@
               <Border Grid.Column="0" Background="#4299E1" CornerRadius="12,0,0,12"/>
 
               <Grid Grid.Column="1" Margin="14,12">
-                <DockPanel>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0">
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
                   <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
                     <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
                   </Border>
                 </DockPanel>
 
-                <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="1" Text="{Binding Cliente}" Opacity="0.8" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"/>
 
-                <DockPanel Margin="0,10,0,0">
-                  <Border Background="#F8FAFC" CornerRadius="999" Padding="8,2" DockPanel.Dock="Left">
-                    <TextBlock Text="{Binding TagsLidas, StringFormat=Tags lidas: {0}}" FontSize="12" Opacity="0.85"/>
+                <DockPanel Grid.Row="2" Margin="0,12,0,0">
+                  <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="999" Padding="8,2" DockPanel.Dock="Left">
+                    <TextBlock Text="EM SEPARAÇÃO" FontSize="11" FontWeight="SemiBold" Foreground="#1D4ED8"/>
                   </Border>
-                  <TextBlock DockPanel.Dock="Right" Text="{Binding IniciadoEm, StringFormat={}{0:dd/MM HH:mm}}" FontSize="12" Opacity="0.65"/>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding IniciadoEm, StringFormat=Início: {0:dd/MM HH:mm}}" FontSize="12" Opacity="0.65"/>
                 </DockPanel>
               </Grid>
             </Grid>
