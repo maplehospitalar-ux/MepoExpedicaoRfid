@@ -243,27 +243,77 @@ public partial class SaidaViewModel : ObservableObject
 
         Cancelar = new AsyncRelayCommand(async () =>
         {
-            if (string.IsNullOrWhiteSpace(SessionId)) return;
+            if (string.IsNullOrWhiteSpace(SessionId))
+            {
+                _log.Warn("Cancelar: nenhuma sessão ativa na tela (SessionId vazio)");
+                return;
+            }
 
-            await _realtime.BroadcastReaderStopAsync(SessionId);
+            var sid = SessionId; // captura antes de limpar
+
+            // Sempre tenta parar leitura local (não pode depender do backend)
+            try
+            {
+                await _realtime.BroadcastReaderStopAsync(sid);
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Cancelar: falha ao enviar reader_stop: {ex.Message}");
+            }
+
+            try
+            {
+                await _pipeline.EndReadingAsync();
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Cancelar: falha ao parar leitura local: {ex.Message}");
+            }
+            finally
+            {
+                _busyReading = false;
+            }
 
             // IMPORTANTE:
             // Cancelar a sessão RFID NÃO deve cancelar/remover o pedido da fila.
-            // O edge function (rfid-session-manager: cancelar_sessao) pode alterar status do pedido no MEPO.
             // Aqui usamos o RPC cancelar_sessao_rfid (sessão) para manter o pedido como pendente.
-            var ok = await _supabase.CancelarSessaoAsync(SessionId, _cfg.Device.Id).ConfigureAwait(true);
-            if (ok)
+            var ok = false;
+            try
+            {
+                ok = await _supabase.CancelarSessaoAsync(sid, _cfg.Device.Id).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Cancelar: exceção ao chamar RPC cancelar_sessao_rfid: {ex.Message}");
+            }
+
+            if (!ok)
+            {
+                // Mesmo se backend falhar, encerra a sessão local para destravar o operador.
+                _log.Warn("Cancelar: backend não confirmou cancelamento; encerrando sessão local mesmo assim.");
+                try
+                {
+                    System.Windows.MessageBox.Show(
+                        "Não consegui confirmar o cancelamento no MEPO (RPC falhou).\nA sessão foi encerrada localmente para você continuar.\nSe o pedido ficar preso como 'em separação' no MEPO, avise para ajustarmos o backend.",
+                        "Cancelar sessão",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Warning);
+                }
+                catch { }
+            }
+            else
             {
                 _log.Info("⛔ Sessão cancelada (apenas sessão; pedido permanece na fila).");
-                _pipeline.ResetSessionCounters();
-                _session.CancelSession("Cancelado pelo operador");
-
-                // Mantém PedidoNumero/Origem/Cliente visíveis, mas remove sessão ativa
-                SessionId = "";
-
-                // Volta pra Fila (opcional, melhora a dinâmica do operador)
-                _nav.Fila?.Execute(null);
             }
+
+            _pipeline.ResetSessionCounters();
+            _session.CancelSession("Cancelado pelo operador");
+
+            // Mantém PedidoNumero/Origem/Cliente visíveis, mas remove sessão ativa
+            SessionId = "";
+
+            // Volta pra Fila (opcional, melhora a dinâmica do operador)
+            _nav.Fila?.Execute(null);
         });
 
         Limpar = new RelayCommand(() => _pipeline.ResetSessionCounters());
