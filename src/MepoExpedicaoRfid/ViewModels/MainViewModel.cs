@@ -4,6 +4,14 @@ namespace MepoExpedicaoRfid.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    partial void OnCurrentViewChanged(object? oldValue, object? newValue)
+    {
+        // Se estiver saindo da tela de Saída, pausa a sessão para evitar sessão fantasma.
+        if (oldValue is SaidaViewModel saida && newValue is not SaidaViewModel)
+        {
+            _ = System.Threading.Tasks.Task.Run(() => saida.PauseOnNavigateAwayAsync());
+        }
+    }
     public NavigationViewModel Nav { get; }
     public StatusViewModel Status { get; }
 

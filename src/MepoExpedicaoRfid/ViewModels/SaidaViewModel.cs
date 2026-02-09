@@ -8,6 +8,10 @@ namespace MepoExpedicaoRfid.ViewModels;
 
 public partial class SaidaViewModel : ObservableObject
 {
+    // Resumo do pedido (exibição)
+    [ObservableProperty] private string clienteNome = "";
+    public ObservableCollection<DocumentoItemResumo> ItensResumo { get; } = new();
+
     private readonly SupabaseService _supabase;
     private readonly TagPipeline _pipeline;
     private readonly TagHistoryService _tags;
@@ -232,6 +236,94 @@ public partial class SaidaViewModel : ObservableObject
         };
 
         RefreshSnapshot();
+    }
+
+    /// <summary>
+    /// Fluxo da Fila (B): operador seleciona pedido na fila; ao abrir, o Desktop cria a sessão.
+    /// Mantém o fluxo atual de Saída (leitura/pipeline) e evita sessão fantasma.
+    /// </summary>
+    public async Task<bool> OpenFromFilaAsync(FilaItem item)
+    {
+        if (item is null) return false;
+
+        // Regra: apenas uma sessão ativa por vez.
+        if (_session.HasActiveSession)
+        {
+            _log.Warn($"Já existe uma sessão ativa ({_session.CurrentSession?.SessionId}). Finalize/cancele antes de abrir outro pedido.");
+            return false;
+        }
+
+        var origem = string.IsNullOrWhiteSpace(item.Origem) ? "OMIE" : item.Origem.Trim().ToUpperInvariant();
+        OrigemSelecionada = origem;
+
+        // Número do pedido (já vem limpo da view)
+        PedidoNumero = item.NumeroPedido ?? "";
+
+        // Resumo (exibição)
+        ClienteNome = item.Cliente ?? "";
+        ItensResumo.Clear();
+        try
+        {
+            var itens = await _supabase.GetDocumentoItensResumoAsync(item.Id).ConfigureAwait(true);
+            foreach (var it in itens) ItensResumo.Add(it);
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Não consegui carregar itens do pedido (documento_id={item.Id}): {ex.Message}");
+        }
+
+        // Cria sessão agora (B: ao abrir)
+        if (string.IsNullOrWhiteSpace(PedidoNumero))
+        {
+            _log.Warn("Pedido selecionado não tem numero_pedido.");
+            return false;
+        }
+
+        var result = await _supabase.CriarSessaoSaidaAsync(origem, PedidoNumero).ConfigureAwait(true);
+        if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
+        {
+            _log.Warn($"Falha ao criar sessão de saída: {result.ErrorMessage ?? result.Message}");
+            return false;
+        }
+
+        SessionId = result.SessionId;
+        _session.StartSession(new SessionInfo
+        {
+            SessionId = SessionId,
+            Tipo = SessionType.Saida,
+            Origem = origem,
+            VendaNumero = PedidoNumero,
+            ClienteNome = ClienteNome,
+            ReaderId = _cfg.Device.Id,
+            ClientType = _cfg.Device.ClientType
+        });
+
+        _pipeline.ResetSessionCounters();
+        await _realtime.BroadcastReaderStartAsync(SessionId);
+        _log.Info($"Sessão de saída ativa (fila): {SessionId}");
+
+        return true;
+    }
+
+    /// <summary>
+    /// Quando sair da tela de Saída, pausa a sessão atual (evita sessão fantasma) e para leitura.
+    /// </summary>
+    public async Task PauseOnNavigateAwayAsync()
+    {
+        try
+        {
+            if (!_session.HasActiveSession) return;
+            if (string.IsNullOrWhiteSpace(SessionId)) return;
+
+            await _realtime.BroadcastReaderStopAsync(SessionId);
+            await _pipeline.EndReadingAsync();
+            _session.PauseCurrentSession();
+            _log.Info($"Sessão pausada ao sair da tela: {SessionId}");
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Falha ao pausar sessão ao sair da tela: {ex.Message}");
+        }
     }
 
     private void RefreshSnapshot()

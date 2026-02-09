@@ -12,6 +12,7 @@ public partial class FilaViewModel : ObservableObject
     private readonly FilaService _fila;
     private readonly RealtimeService _realtime;
     private readonly NavigationViewModel _nav;
+    private readonly SaidaViewModel _saida;
     private readonly AppLogger _log;
 
     public event EventHandler<JsonElement>? OnPedidoParaImpressao;
@@ -23,13 +24,14 @@ public partial class FilaViewModel : ObservableObject
     [ObservableProperty] private FilaItem? selected;
 
     public IAsyncRelayCommand Refresh { get; }
-    public IAsyncRelayCommand IniciarSeparacao { get; }
+    public IAsyncRelayCommand AbrirPedido { get; }
 
-    public FilaViewModel(FilaService fila, RealtimeService realtime, NavigationViewModel nav, AppLogger log)
+    public FilaViewModel(FilaService fila, RealtimeService realtime, NavigationViewModel nav, SaidaViewModel saida, AppLogger log)
     {
         _fila = fila;
         _realtime = realtime;
         _nav = nav;
+        _saida = saida;
         _log = log;
 
         Refresh = new AsyncRelayCommand(async () => 
@@ -39,17 +41,20 @@ public partial class FilaViewModel : ObservableObject
             _log.Info("✅ Fila atualizada");
         });
 
-        IniciarSeparacao = new AsyncRelayCommand(async () =>
+        AbrirPedido = new AsyncRelayCommand(async () =>
         {
-            if (Selected?.SessionId is null) 
+            if (Selected is null)
             {
                 _log.Warn("Nenhum pedido selecionado");
                 return;
             }
 
-            _log.Info($"▶️ Iniciando separação do pedido: {Selected.NumeroPedido}");
-            
-            // Navega para Saída - SaidaViewModel será inicializado com dados do pedido
+            _log.Info($"▶️ Abrindo pedido da fila: {Selected.NumeroPedido} ({Selected.Origem})");
+
+            // Carrega pedido na tela de Saída (cria sessão ao abrir, conforme regra)
+            var ok = await _saida.OpenFromFilaAsync(Selected).ConfigureAwait(true);
+            if (!ok) return;
+
             _nav.Saida?.Execute(null);
         });
 

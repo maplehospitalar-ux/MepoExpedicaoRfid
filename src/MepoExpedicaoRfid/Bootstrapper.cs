@@ -128,10 +128,12 @@ public static class Bootstrapper
             Log("Bootstrapper: Iniciando TagPipeline...");
             await pipeline.StartAsync(); // ✅ AGUARDA a conexão completar antes de continuar
 
+            var saidaVm = new SaidaViewModel(supabase, pipeline, tags, nav, cfg, sessionManager, realtime, log);
+
             var vm = new MainViewModel(nav, status,
                 new DashboardViewModel(status, pipeline, realtime, log),
-                new FilaViewModel(fila, realtime, nav, log),
-                new SaidaViewModel(supabase, pipeline, tags, nav, cfg, sessionManager, realtime, log),
+                new FilaViewModel(fila, realtime, nav, saidaVm, log),
+                saidaVm,
                 new EntradaViewModel(supabase, pipeline, nav, cfg, sessionManager, realtime, log),
                 new ConsultaTagViewModel(tags, pipeline, log),
                 new ConfigViewModel(cfg, log));
