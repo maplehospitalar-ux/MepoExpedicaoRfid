@@ -170,10 +170,61 @@
   <StackPanel Grid.Column="1" Margin="12,0,12,0">
     <TextBlock Text="{Binding EmSeparacao.Count, StringFormat=Em separação ({0})}" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-    <ItemsControl ItemsSource="{Binding EmSeparacaoView}">
-      <ItemsControl.ItemTemplate>
+    <ListBox ItemsSource="{Binding EmSeparacaoView}"
+             SelectedItem="{Binding Selected, Mode=TwoWay}"
+             BorderThickness="0"
+             Background="Transparent"
+             ScrollViewer.VerticalScrollBarVisibility="Auto">
+
+      <!-- Duplo clique abre -->
+      <ListBox.InputBindings>
+        <MouseBinding Gesture="LeftDoubleClick" Command="{Binding AbrirItem}" CommandParameter="{Binding Selected}"/>
+      </ListBox.InputBindings>
+
+      <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem">
+          <Setter Property="Margin" Value="0,0,0,10"/>
+          <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+          <Setter Property="Background" Value="Transparent"/>
+
+          <Setter Property="ContextMenu">
+            <Setter.Value>
+              <ContextMenu>
+                <MenuItem Header="Abrir" 
+                          Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                          CommandParameter="{Binding}"/>
+                <MenuItem Header="Reimprimir" 
+                          Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                          CommandParameter="{Binding}"/>
+              </ContextMenu>
+            </Setter.Value>
+          </Setter>
+
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="Outer" Background="Transparent" CornerRadius="12">
+                  <ContentPresenter/>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="Outer" Property="BorderBrush" Value="#4299E1"/>
+                    <Setter TargetName="Outer" Property="BorderThickness" Value="2"/>
+                  </Trigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Outer" Property="BorderBrush" Value="#80CBD5E0"/>
+                    <Setter TargetName="Outer" Property="BorderThickness" Value="1"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </ListBox.ItemContainerStyle>
+
+      <ListBox.ItemTemplate>
         <DataTemplate>
-          <Border Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,10">
+          <Border Style="{StaticResource CardBorder}" Padding="0">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="6"/>
@@ -185,27 +236,9 @@
               <Grid Grid.Column="1" Margin="14,12">
                 <DockPanel>
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
-
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <!-- Menu compacto (não polui o card) -->
-                    <Button Content="⋯" Padding="6,0" Margin="0,0,6,0" MinWidth="26" Height="22" VerticalAlignment="Center"
-                            Background="#F1F5F9" BorderBrush="#E2E8F0" Foreground="#334155">
-                      <Button.ContextMenu>
-                        <ContextMenu>
-                          <MenuItem Header="Abrir" 
-                                    Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"/>
-                          <MenuItem Header="Reimprimir" 
-                                    Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"/>
-                        </ContextMenu>
-                      </Button.ContextMenu>
-                    </Button>
-
-                    <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
-                      <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
-                    </Border>
-                  </StackPanel>
+                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
+                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                  </Border>
                 </DockPanel>
 
                 <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
@@ -220,17 +253,61 @@
             </Grid>
           </Border>
         </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+      </ListBox.ItemTemplate>
+
+    </ListBox>
   </StackPanel>
 
   <StackPanel Grid.Column="2">
     <TextBlock Text="{Binding Finalizados.Count, StringFormat=Finalizados ({0})}" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-    <ItemsControl ItemsSource="{Binding FinalizadosView}">
-      <ItemsControl.ItemTemplate>
+    <ListBox ItemsSource="{Binding FinalizadosView}"
+             SelectedItem="{Binding Selected, Mode=TwoWay}"
+             BorderThickness="0"
+             Background="Transparent"
+             ScrollViewer.VerticalScrollBarVisibility="Auto">
+
+      <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem">
+          <Setter Property="Margin" Value="0,0,0,10"/>
+          <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+          <Setter Property="Background" Value="Transparent"/>
+
+          <Setter Property="ContextMenu">
+            <Setter.Value>
+              <ContextMenu>
+                <MenuItem Header="Reimprimir" 
+                          Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                          CommandParameter="{Binding}"/>
+              </ContextMenu>
+            </Setter.Value>
+          </Setter>
+
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="Outer" Background="Transparent" CornerRadius="12">
+                  <ContentPresenter/>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="Outer" Property="BorderBrush" Value="#4299E1"/>
+                    <Setter TargetName="Outer" Property="BorderThickness" Value="2"/>
+                  </Trigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Outer" Property="BorderBrush" Value="#80CBD5E0"/>
+                    <Setter TargetName="Outer" Property="BorderThickness" Value="1"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </ListBox.ItemContainerStyle>
+
+      <ListBox.ItemTemplate>
         <DataTemplate>
-          <Border Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,10">
+          <Border Style="{StaticResource CardBorder}" Padding="0">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="6"/>
@@ -242,24 +319,9 @@
               <Grid Grid.Column="1" Margin="14,12">
                 <DockPanel>
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
-
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <!-- Menu compacto (não polui o card) -->
-                    <Button Content="⋯" Padding="6,0" Margin="0,0,6,0" MinWidth="26" Height="22" VerticalAlignment="Center"
-                            Background="#F1F5F9" BorderBrush="#E2E8F0" Foreground="#334155">
-                      <Button.ContextMenu>
-                        <ContextMenu>
-                          <MenuItem Header="Reimprimir" 
-                                    Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"/>
-                        </ContextMenu>
-                      </Button.ContextMenu>
-                    </Button>
-
-                    <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
-                      <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
-                    </Border>
-                  </StackPanel>
+                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
+                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                  </Border>
                 </DockPanel>
 
                 <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
@@ -272,8 +334,9 @@
             </Grid>
           </Border>
         </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+      </ListBox.ItemTemplate>
+
+    </ListBox>
   </StackPanel>
 </Grid>
 
