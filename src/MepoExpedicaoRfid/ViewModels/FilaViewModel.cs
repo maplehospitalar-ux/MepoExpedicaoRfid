@@ -62,7 +62,7 @@ public partial class FilaViewModel : ObservableObject
 
         _realtime.OnNovoPedidoFila += async (_, payload) =>
         {
-            _log.Info("Novo pedido na fila recebido via Realtime");
+            _log.Info("Novo pedido na fila recebido via Realtime (broadcast)");
 
             if (payload.TryGetProperty("print_data", out var printData))
             {
@@ -75,6 +75,13 @@ public partial class FilaViewModel : ObservableObject
 
             await _fila.RefreshAsync();
             _log.Info("Fila atualizada");
+        };
+
+        // Postgres changes (documentos_comerciais status_expedicao='preparando')
+        _realtime.OnFilaDbChanged += async (_, payload) =>
+        {
+            _log.Info("Fila mudou (postgres_changes) - atualizando...");
+            await _fila.RefreshAsync();
         };
 
         // Initial load

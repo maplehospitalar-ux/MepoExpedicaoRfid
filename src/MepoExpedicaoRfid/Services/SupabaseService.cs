@@ -142,6 +142,21 @@ public sealed class SupabaseService
         }
     }
 
+    public async Task<IReadOnlyList<DocumentoItemResumo>> GetDocumentoItensResumoAsync(Guid documentoId)
+    {
+        await EnsureConnectedAsync();
+        var select = "sku,descricao,quantidade,preco_unitario,valor_total";
+        var path = $"/rest/v1/documentos_comerciais_itens?select={Uri.EscapeDataString(select)}&documento_id=eq.{Uri.EscapeDataString(documentoId.ToString())}&order=sku.asc";
+        using var req = NewAuthedRequest(HttpMethod.Get, path);
+        using var resp = await _http.SendAsync(req);
+        var body = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Erro ao buscar itens do documento {documentoId}: {resp.StatusCode} {body}");
+
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        return JsonSerializer.Deserialize<List<DocumentoItemResumo>>(body, opts) ?? new();
+    }
+
     public async Task<TagHistoricoDto>  GetTagHistoricoAsync(string epc, int limit = 200)
     {
         await EnsureConnectedAsync();

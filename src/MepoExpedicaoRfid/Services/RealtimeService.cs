@@ -15,6 +15,11 @@ public sealed class RealtimeService : IDisposable
     private readonly string _deviceId;
     private readonly AppLogger _log;
 
+    // Canal extra para postgres_changes (fila em documentos_comerciais)
+    private const string DbSchema = "public";
+    private const string DbTableFila = "documentos_comerciais";
+    private readonly string _dbTopic = $"realtime:{DbSchema}:{DbTableFila}";
+
     private ClientWebSocket? _ws;
     private CancellationTokenSource? _cts;
     private bool _disposed;
@@ -29,6 +34,7 @@ public sealed class RealtimeService : IDisposable
     public event EventHandler<JsonElement>? OnReaderPauseReceived;
     public event EventHandler<JsonElement>? OnSessionCancelReceived;
     public event EventHandler<JsonElement>? OnNovoPedidoFila;
+    public event EventHandler<JsonElement>? OnFilaDbChanged;
     public event EventHandler? OnConnected;
     public event EventHandler? OnDisconnected;
 
@@ -114,6 +120,7 @@ public sealed class RealtimeService : IDisposable
 
     private async Task JoinChannelAsync()
     {
+        // 1) Canal de broadcast (controle/leitura RFID)
         var joinMsg = new
         {
             topic = _topic,
@@ -121,9 +128,34 @@ public sealed class RealtimeService : IDisposable
             payload = new { config = new { broadcast = new { self = false, ack = true } } },
             @ref = _refCounter++.ToString()
         };
-
         await SendAsync(joinMsg);
         _log.Info($"📡 Join enviado: {_topic}");
+
+        // 2) Canal postgres_changes (fila: documentos_comerciais status_expedicao='preparando')
+        var joinDb = new
+        {
+            topic = _dbTopic,
+            @event = "phx_join",
+            payload = new
+            {
+                config = new
+                {
+                    postgres_changes = new object[]
+                    {
+                        new
+                        {
+                            @event = "*",
+                            schema = DbSchema,
+                            table = DbTableFila,
+                            filter = "status_expedicao=eq.preparando"
+                        }
+                    }
+                }
+            },
+            @ref = _refCounter++.ToString()
+        };
+        await SendAsync(joinDb);
+        _log.Info($"📡 Join enviado: {_dbTopic} (postgres_changes)");
     }
 
     private async Task LeaveChannelAsync()
@@ -302,6 +334,17 @@ public sealed class RealtimeService : IDisposable
             if (eventName is "phx_reply" or "phx_error")
                 return;
 
+            // Postgres changes (fila)
+            if (eventName == "postgres_changes")
+            {
+                if (root.TryGetProperty("payload", out var payloadProp))
+                {
+                    // payload contém: schema/table/event/record/old_record...
+                    OnFilaDbChanged?.Invoke(this, payloadProp.Clone());
+                }
+                return;
+            }
+
             // Processa broadcasts
             if (eventName == "broadcast")
             {
@@ -339,7 +382,7 @@ public sealed class RealtimeService : IDisposable
                             break;
                     }
                 }
-                
+
                 // Evento genérico (para debug/logging)
                 OnBroadcastReceived?.Invoke(this, doc);
             }
