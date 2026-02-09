@@ -120,6 +120,7 @@ public static class Bootstrapper
             Log("Bootstrapper: Criando StatusViewModel e navegação");
             var status = new StatusViewModel(supabase, reader, cfg, realtime, log);
             var nav = new NavigationViewModel();
+            var printer = new PrintService(log);
 
             Log("Bootstrapper: Criando MainViewModel");
             _ = realtime.ConnectAsync();
@@ -128,7 +129,7 @@ public static class Bootstrapper
             Log("Bootstrapper: Iniciando TagPipeline...");
             await pipeline.StartAsync(); // ✅ AGUARDA a conexão completar antes de continuar
 
-            var saidaVm = new SaidaViewModel(supabase, pipeline, tags, nav, cfg, sessionManager, realtime, log);
+            var saidaVm = new SaidaViewModel(supabase, pipeline, tags, nav, cfg, sessionManager, realtime, printer, log);
 
             var vm = new MainViewModel(nav, status,
                 new DashboardViewModel(status, pipeline, realtime, log),

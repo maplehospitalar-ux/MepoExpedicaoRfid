@@ -19,8 +19,19 @@ public partial class SaidaViewModel : ObservableObject
     private readonly AppConfig _cfg;
     private readonly SessionStateManager _session;
     private readonly RealtimeService _realtime;
+    private readonly PrintService _printer;
     private readonly AppLogger _log;
     private bool _busyReading = false;  // Previne múltiplas leituras simultâneas
+
+    // Última sessão finalizada (para mostrar resumo + imprimir/copiar)
+    [ObservableProperty] private string lastPedidoNumero = "";
+    [ObservableProperty] private string lastOrigem = "";
+    [ObservableProperty] private string lastClienteNome = "";
+    public ObservableCollection<SaidaResumoLinha> LastResumo { get; } = new();
+    public ObservableCollection<SaidaResumoLinha> ResumoAtual { get; } = new();
+
+    public IRelayCommand CopiarResumo { get; }
+    public IRelayCommand ImprimirResumo { get; }
 
     [ObservableProperty] private string pedidoNumero = "";
     [ObservableProperty] private string sessionId = "";
@@ -48,7 +59,7 @@ public partial class SaidaViewModel : ObservableObject
     public IAsyncRelayCommand Cancelar { get; }
     public IRelayCommand Limpar { get; }
 
-    public SaidaViewModel(SupabaseService supabase, TagPipeline pipeline, TagHistoryService tags, NavigationViewModel nav, AppConfig cfg, SessionStateManager session, RealtimeService realtime, AppLogger log)
+    public SaidaViewModel(SupabaseService supabase, TagPipeline pipeline, TagHistoryService tags, NavigationViewModel nav, AppConfig cfg, SessionStateManager session, RealtimeService realtime, PrintService printer, AppLogger log)
     {
         _supabase = supabase;
         _pipeline = pipeline;
@@ -57,6 +68,7 @@ public partial class SaidaViewModel : ObservableObject
         _cfg = cfg;
         _session = session;
         _realtime = realtime;
+        _printer = printer;
         _log = log;
 
         _pipeline.SnapshotUpdated += (_, __) => RefreshSnapshot();
@@ -64,6 +76,13 @@ public partial class SaidaViewModel : ObservableObject
         CriarOuAbrirSessao = new AsyncRelayCommand(async () =>
         {
             if (string.IsNullOrWhiteSpace(PedidoNumero)) return;
+
+            // Regra: apenas uma sessão ativa por vez.
+            if (_session.HasActiveSession)
+            {
+                _log.Warn($"Já existe uma sessão ativa ({_session.CurrentSession?.SessionId}). Finalize/cancele antes de criar outra.");
+                return;
+            }
 
             var origem = string.IsNullOrWhiteSpace(OrigemSelecionada)
                 ? "OMIE"
@@ -97,6 +116,7 @@ public partial class SaidaViewModel : ObservableObject
                 Tipo = SessionType.Saida,
                 Origem = origem,
                 VendaNumero = PedidoNumero,
+                ClienteNome = ClienteNome,
                 ReaderId = _cfg.Device.Id,
                 ClientType = _cfg.Device.ClientType
             });
@@ -189,8 +209,18 @@ public partial class SaidaViewModel : ObservableObject
             if (ok)
             {
                 _log.Info("✅ Sessão finalizada.");
+
+                // Guarda resumo da última sessão para exibição + imprimir/copiar
+                LastPedidoNumero = PedidoNumero;
+                LastOrigem = OrigemSelecionada;
+                LastClienteNome = ClienteNome;
+                LastResumo.Clear();
+                foreach (var r in ResumoAtual) LastResumo.Add(r);
+
                 _pipeline.ResetSessionCounters();
                 _session.EndSession();
+
+                // Limpa sessão ativa (mas mantém LastResumo)
                 PedidoNumero = "";
                 SessionId = "";
             }
@@ -212,6 +242,43 @@ public partial class SaidaViewModel : ObservableObject
         });
 
         Limpar = new RelayCommand(() => _pipeline.ResetSessionCounters());
+
+        CopiarResumo = new RelayCommand(() =>
+        {
+            var text = BuildResumoText(LastResumo.Count > 0 ? LastResumo : ResumoAtual,
+                LastResumo.Count > 0 ? LastPedidoNumero : PedidoNumero,
+                LastResumo.Count > 0 ? LastOrigem : OrigemSelecionada,
+                LastResumo.Count > 0 ? LastClienteNome : ClienteNome);
+
+            if (string.IsNullOrWhiteSpace(text)) return;
+            try
+            {
+                System.Windows.Clipboard.SetText(text);
+                _log.Info("📋 Resumo copiado para área de transferência.");
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Falha ao copiar resumo: {ex.Message}");
+            }
+        });
+
+        ImprimirResumo = new RelayCommand(() =>
+        {
+            var text = BuildResumoText(LastResumo.Count > 0 ? LastResumo : ResumoAtual,
+                LastResumo.Count > 0 ? LastPedidoNumero : PedidoNumero,
+                LastResumo.Count > 0 ? LastOrigem : OrigemSelecionada,
+                LastResumo.Count > 0 ? LastClienteNome : ClienteNome);
+
+            if (string.IsNullOrWhiteSpace(text)) return;
+            try
+            {
+                _printer.PrintText(text);
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Falha ao imprimir: {ex.Message}");
+            }
+        });
 
         _realtime.OnReaderStopReceived += async (_, __) =>
         {
@@ -338,6 +405,14 @@ public partial class SaidaViewModel : ObservableObject
             Groups.Clear();
             foreach (var g in groups) Groups.Add(g);
 
+            // Resumo atual por SKU/Lote (com descrição quando possível)
+            ResumoAtual.Clear();
+            foreach (var g in groups)
+            {
+                var desc = ItensResumo.FirstOrDefault(x => string.Equals(x.Sku, g.Sku, StringComparison.OrdinalIgnoreCase))?.Descricao;
+                ResumoAtual.Add(new SaidaResumoLinha { Sku = g.Sku, Descricao = desc, Lote = g.Lote, Quantidade = g.Quantidade });
+            }
+
             Recent.Clear();
             foreach (var t in _pipeline.RecentTags) 
             {
@@ -378,5 +453,24 @@ public partial class SaidaViewModel : ObservableObject
             MensagemDivergencia = "";
         }
         }); // Fecha Dispatcher.BeginInvoke
+    }
+
+    private static string BuildResumoText(IEnumerable<SaidaResumoLinha> linhas, string pedido, string origem, string cliente)
+    {
+        var list = (linhas ?? Array.Empty<SaidaResumoLinha>()).ToList();
+        if (list.Count == 0) return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Pedido: {pedido}  Origem: {origem}");
+        if (!string.IsNullOrWhiteSpace(cliente)) sb.AppendLine($"Cliente: {cliente}");
+        sb.AppendLine(new string('-', 32));
+
+        foreach (var l in list.OrderBy(x => x.Sku).ThenBy(x => x.Lote))
+        {
+            var desc = string.IsNullOrWhiteSpace(l.Descricao) ? "" : (" - " + l.Descricao);
+            sb.AppendLine($"SKU: {l.Sku}{desc} - Lote {l.Lote} (qtd {l.Quantidade:00})");
+        }
+
+        return sb.ToString();
     }
 }
