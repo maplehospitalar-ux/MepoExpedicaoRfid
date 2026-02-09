@@ -13,6 +13,7 @@ public partial class FilaViewModel : ObservableObject
     private readonly RealtimeService _realtime;
     private readonly NavigationViewModel _nav;
     private readonly SaidaViewModel _saida;
+    private readonly PrintService _printer;
     private readonly AppLogger _log;
 
     public event EventHandler<JsonElement>? OnPedidoParaImpressao;
@@ -26,12 +27,13 @@ public partial class FilaViewModel : ObservableObject
     public IAsyncRelayCommand Refresh { get; }
     public IAsyncRelayCommand AbrirPedido { get; }
 
-    public FilaViewModel(FilaService fila, RealtimeService realtime, NavigationViewModel nav, SaidaViewModel saida, AppLogger log)
+    public FilaViewModel(FilaService fila, RealtimeService realtime, NavigationViewModel nav, SaidaViewModel saida, PrintService printer, AppLogger log)
     {
         _fila = fila;
         _realtime = realtime;
         _nav = nav;
         _saida = saida;
+        _printer = printer;
         _log = log;
 
         Refresh = new AsyncRelayCommand(async () => 
@@ -87,6 +89,27 @@ public partial class FilaViewModel : ObservableObject
         {
             _log.Info("Fila mudou (postgres_changes) - atualizando...");
             await _fila.RefreshAsync();
+
+            // Auto impressão quando MEPO envia pedido para fila (status_expedicao=preparando)
+            // A payload costuma conter record com id do documento.
+            try
+            {
+                if (payload.TryGetProperty("record", out var rec) && rec.TryGetProperty("id", out var idProp))
+                {
+                    var idStr = idProp.GetString() ?? idProp.ToString();
+                    if (Guid.TryParse(idStr, out var docId))
+                    {
+                        _log.Info($"🖨️ Pedido entrou na fila (doc_id={docId}) - imprimindo... ");
+                        var printText = await _fila.BuildPrintTextAsync(docId);
+                        if (!string.IsNullOrWhiteSpace(printText))
+                            _printer.PrintText(printText);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Falha ao auto-imprimir pedido da fila: {ex.Message}");
+            }
         };
 
         // Initial load

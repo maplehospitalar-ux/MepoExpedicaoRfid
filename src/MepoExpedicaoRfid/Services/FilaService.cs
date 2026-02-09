@@ -9,6 +9,36 @@ namespace MepoExpedicaoRfid.Services;
 /// </summary>
 public sealed class FilaService
 {
+    public async Task<string?> BuildPrintTextAsync(Guid documentoId)
+    {
+        try
+        {
+            // Busca dados básicos na view da fila (cliente, numero_pedido, origem)
+            var rows = await _supabase.GetFilaAsync(new[] { "na_fila", "preparando", "processando", "finalizada" }, 300);
+            var row = rows.FirstOrDefault(r => r.Id == documentoId);
+
+            var origem = row?.Origem ?? "";
+            var numero = row?.NumeroPedido ?? "";
+            var cliente = row?.Cliente ?? "";
+
+            var itens = await _supabase.GetDocumentoItensResumoAsync(documentoId);
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Pedido: {numero}  Origem: {origem}");
+            if (!string.IsNullOrWhiteSpace(cliente)) sb.AppendLine($"Cliente: {cliente}");
+            sb.AppendLine(new string('-', 32));
+
+            foreach (var it in itens)
+                sb.AppendLine($"{it.Sku}  {it.Quantidade:0.##}  {it.Descricao}");
+
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Falha ao montar texto de impressão do pedido {documentoId}: {ex.Message}");
+            return null;
+        }
+    }
     private readonly SupabaseService _supabase;
     private readonly AppLogger _log;
 

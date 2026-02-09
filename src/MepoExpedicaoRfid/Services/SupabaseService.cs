@@ -149,7 +149,8 @@ public sealed class SupabaseService
 
         // documentos_comerciais: buscar id pelo par (origem, numero_pedido)
         var select = "id";
-        var path = $"/rest/v1/documentos_comerciais?select={Uri.EscapeDataString(select)}&origem=eq.{Uri.EscapeDataString(origem.Trim().ToUpperInvariant())}&numero_pedido=eq.{Uri.EscapeDataString(numeroPedido.Trim())}&limit=1";
+        // numero_pedido pode ter letras/hífens (ex.: CA-841). Usar ilike para evitar erro quando coluna for text.
+        var path = $"/rest/v1/documentos_comerciais?select={Uri.EscapeDataString(select)}&origem=eq.{Uri.EscapeDataString(origem.Trim().ToUpperInvariant())}&numero_pedido=ilike.{Uri.EscapeDataString(numeroPedido.Trim())}&limit=1";
         using var req = NewAuthedRequest(HttpMethod.Get, path);
         using var resp = await _http.SendAsync(req);
         var body = await resp.Content.ReadAsStringAsync();

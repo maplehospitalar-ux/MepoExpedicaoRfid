@@ -334,15 +334,19 @@ public partial class SaidaViewModel : ObservableObject
             // Em alguns cenários (ex.: itens vindos do UNION de sessões), o Id pode não ser o documento_id.
             // Tentamos primeiro com item.Id; se vier vazio, resolvemos pelo par (origem, numero_pedido).
             var docId = item.Id;
+            _log.Info($"📦 Carregando itens do pedido: origem={origem}, numero={PedidoNumero}, fila_id={item.Id}");
             var itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
+            _log.Info($"📦 Itens por documento_id=fila_id: count={itens.Count}");
 
             if (itens.Count == 0)
             {
                 var resolvedDocId = await _supabase.GetDocumentoIdByOrigemNumeroPedidoAsync(origem, PedidoNumero).ConfigureAwait(true);
+                _log.Info($"📦 Resolve documento_id por origem+numero => {resolvedDocId}");
                 if (resolvedDocId.HasValue)
                 {
                     docId = resolvedDocId.Value;
                     itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
+                    _log.Info($"📦 Itens por documento_id resolvido: count={itens.Count}");
                 }
             }
 

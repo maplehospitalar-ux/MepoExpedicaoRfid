@@ -133,7 +133,7 @@ public static class Bootstrapper
 
             var vm = new MainViewModel(nav, status,
                 new DashboardViewModel(status, pipeline, realtime, log),
-                new FilaViewModel(fila, realtime, nav, saidaVm, log),
+                new FilaViewModel(fila, realtime, nav, saidaVm, printer, log),
                 saidaVm,
                 new EntradaViewModel(supabase, pipeline, nav, cfg, sessionManager, realtime, log),
                 new ConsultaTagViewModel(tags, pipeline, log),
