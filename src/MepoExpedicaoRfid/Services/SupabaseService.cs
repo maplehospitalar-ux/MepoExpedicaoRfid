@@ -356,6 +356,75 @@ public sealed class SupabaseService
         return await CallSessionManagerAsync(payload);
     }
 
+    /// <summary>
+    /// Resolve o número do pedido (venda_numero) a partir de um identificador que o operador possa colar no Desktop.
+    /// Ex: session_id do MEPO / fila (SAIDA_...), receipt_code/internal_number etc.
+    ///
+    /// Estratégia:
+    /// - se já parecer um número de pedido (só dígitos), retorna como está.
+    /// - tenta procurar na VIEW v_fila_expedicao_csharp por session_id.
+    /// - fallback: procura em rfid_saidas_sessions por session_id e usa venda_numero.
+    ///
+    /// Retorna null se não conseguiu resolver.
+    /// </summary>
+    public async Task<string?> ResolverNumeroPedidoNoMepoAsync(string input)
+    {
+        await EnsureConnectedAsync();
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var raw = input.Trim();
+
+        // Caso mais comum: já é número de pedido.
+        if (raw.All(char.IsDigit)) return raw;
+
+        // 1) tenta view da fila (campo numero_pedido)
+        try
+        {
+            var path = $"/rest/v1/v_fila_expedicao_csharp?select=numero_pedido&session_id=eq.{Uri.EscapeDataString(raw)}&limit=1";
+            using var req = NewAuthedRequest(HttpMethod.Get, path);
+            using var resp = await _http.SendAsync(req);
+            var body = await resp.Content.ReadAsStringAsync();
+            if (resp.IsSuccessStatusCode)
+            {
+                using var doc = JsonDocument.Parse(body);
+                var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+                if (first.ValueKind != JsonValueKind.Undefined && first.TryGetProperty("numero_pedido", out var np))
+                {
+                    var v = np.GetString();
+                    if (!string.IsNullOrWhiteSpace(v)) return v.Trim();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Debug($"ResolverNumeroPedidoNoMepoAsync(view) falhou: {ex.Message}");
+        }
+
+        // 2) fallback: tabela de sessões (campo venda_numero)
+        try
+        {
+            var path2 = $"/rest/v1/rfid_saidas_sessions?select=venda_numero&session_id=eq.{Uri.EscapeDataString(raw)}&limit=1";
+            using var req2 = NewAuthedRequest(HttpMethod.Get, path2);
+            using var resp2 = await _http.SendAsync(req2);
+            var body2 = await resp2.Content.ReadAsStringAsync();
+            if (resp2.IsSuccessStatusCode)
+            {
+                using var doc2 = JsonDocument.Parse(body2);
+                var first2 = doc2.RootElement.EnumerateArray().FirstOrDefault();
+                if (first2.ValueKind != JsonValueKind.Undefined && first2.TryGetProperty("venda_numero", out var vn))
+                {
+                    var v = vn.GetString();
+                    if (!string.IsNullOrWhiteSpace(v)) return v.Trim();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Debug($"ResolverNumeroPedidoNoMepoAsync(sessions) falhou: {ex.Message}");
+        }
+
+        return null;
+    }
+
     public async Task<SessionCreateResult> CriarSessaoEntradaAsync(string sku, string lote, DateTime? dataFabricacao, DateTime? dataValidade)
     {
         await EnsureConnectedAsync();

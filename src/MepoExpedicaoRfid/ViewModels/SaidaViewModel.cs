@@ -65,6 +65,20 @@ public partial class SaidaViewModel : ObservableObject
                 ? "OMIE"
                 : OrigemSelecionada.Trim().ToUpperInvariant();
 
+            // Se o operador colar um session_id/código do MEPO em vez do número do pedido,
+            // tentamos resolver automaticamente.
+            var resolved = await _supabase.ResolverNumeroPedidoNoMepoAsync(PedidoNumero).ConfigureAwait(true);
+            if (!string.IsNullOrWhiteSpace(resolved) && !string.Equals(resolved, PedidoNumero, StringComparison.OrdinalIgnoreCase))
+            {
+                _log.Info($"🔎 Pedido informado resolvido via MEPO: '{PedidoNumero}' -> '{resolved}'");
+                PedidoNumero = resolved;
+            }
+            else if (string.IsNullOrWhiteSpace(resolved) && !PedidoNumero.Trim().All(char.IsDigit))
+            {
+                _log.Warn($"Não consegui resolver o número do pedido no MEPO a partir de '{PedidoNumero}'. Informe o número do pedido (somente dígitos) ou um session_id válido da fila.");
+                return;
+            }
+
             var result = await _supabase.CriarSessaoSaidaAsync(origem, PedidoNumero).ConfigureAwait(true);
             if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
             {
