@@ -9,6 +9,10 @@ namespace MepoExpedicaoRfid.Views;
 
 public partial class FilaView : UserControl
 {
+    private DateTime _lastOpenAtUtc = DateTime.MinValue;
+    private string? _lastOpenKey;
+    private bool _opening;
+
     public FilaView()
     {
         InitializeComponent();
@@ -19,10 +23,23 @@ public partial class FilaView : UserControl
         // Duplo clique abre
         if (e.ClickCount < 2) return;
 
+        e.Handled = true; // evita bubbling/duplicação (ex.: Border interno/TextBlock)
+
         var item = (sender as FrameworkElement)?.DataContext as FilaItem;
         if (item is null) return;
 
         if (DataContext is not FilaViewModel vm) return;
+
+        // Debounce simples (protege contra 2 disparos do mesmo double-click)
+        var key = $"{item.Origem}|{item.NumeroPedido}";
+        var now = DateTime.UtcNow;
+
+        if (_opening) return;
+        if (_lastOpenKey == key && (now - _lastOpenAtUtc).TotalMilliseconds < 600) return;
+
+        _lastOpenKey = key;
+        _lastOpenAtUtc = now;
+        _opening = true;
 
         try
         {
@@ -31,6 +48,10 @@ public partial class FilaView : UserControl
         catch
         {
             // sem crash de UI
+        }
+        finally
+        {
+            _opening = false;
         }
     }
 

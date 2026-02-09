@@ -112,7 +112,7 @@
                 <DataTemplate>
                   <TextBlock TextWrapping="Wrap" Opacity="0.9">
                     <Run Text="• "/>
-                    <Run Text="{Binding}"/>
+                    <Run Text="{Binding Path=., Mode=OneWay}"/>
                   </TextBlock>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
