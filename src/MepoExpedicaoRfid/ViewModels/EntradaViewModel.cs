@@ -261,18 +261,14 @@ public partial class EntradaViewModel : ObservableObject
 
     private void RefreshSnapshot()
     {
-        _log.Info($"🔔 EntradaViewModel.RefreshSnapshot chamado. Tags no pipeline: {_pipeline.TotalUniqueTags}");
-        // ✅ CORRIGIDO: Usa BeginInvoke para atualização assíncrona (evita deadlock)
+        // HOT PATH: sem log por tick (trava UI + cresce log)
+        // ✅ Usa BeginInvoke para atualização assíncrona (evita deadlock)
         System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             TotalTags = _pipeline.TotalUniqueTags;
             Recent.Clear();
-            foreach (var t in _pipeline.RecentTags) 
-            {
-                _log.Info($"  📋 Adicionando tag à lista Recent: {t}");
+            foreach (var t in _pipeline.RecentTags)
                 Recent.Add(t);
-            }
-            _log.Info($"✅ EntradaViewModel.Recent atualizado: {Recent.Count} tags na lista");
         });
     }
 }

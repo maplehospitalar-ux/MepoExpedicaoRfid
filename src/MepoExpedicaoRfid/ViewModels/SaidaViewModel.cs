@@ -463,8 +463,8 @@ public partial class SaidaViewModel : ObservableObject
 
     private void RefreshSnapshot()
     {
-        _log.Info($"🔔 SaidaViewModel.RefreshSnapshot chamado. Tags no pipeline: {_pipeline.TotalUniqueTags}");
-        // ✅ CORRIGIDO: Usa BeginInvoke para atualização assíncrona (evita deadlock)
+        // HOT PATH: sem log por tick (trava UI + cresce log)
+        // ✅ Usa BeginInvoke para atualização assíncrona (evita deadlock)
         System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             TotalTags = _pipeline.TotalUniqueTags;
@@ -482,12 +482,8 @@ public partial class SaidaViewModel : ObservableObject
             }
 
             Recent.Clear();
-            foreach (var t in _pipeline.RecentTags) 
-            {
-                _log.Info($"  📋 Adicionando tag à lista Recent: {t}");
+            foreach (var t in _pipeline.RecentTags)
                 Recent.Add(t);
-            }
-            _log.Info($"✅ SaidaViewModel.Recent atualizado: {Recent.Count} tags na lista");
 
         SkusUnicos = groups.Select(g => g.Sku).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         LotesUnicos = groups.Select(g => g.Lote).Distinct(StringComparer.OrdinalIgnoreCase).Count();

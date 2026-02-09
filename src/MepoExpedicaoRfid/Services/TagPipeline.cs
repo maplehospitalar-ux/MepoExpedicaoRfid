@@ -55,9 +55,8 @@ public sealed class TagPipeline
 
         _reader.TagRead += (_, e) =>
         {
-            _log.Info($"🔔 TagPipeline recebeu TagRead: EPC={e.Epc}");
-            bool written = _ch.Writer.TryWrite(e);
-            _log.Info($"📝 TagPipeline.Channel.TryWrite = {written}");
+            // HOT PATH: evitar log por tag (vira gargalo e trava o desktop)
+            _ch.Writer.TryWrite(e);
         };
     }
 
@@ -124,10 +123,9 @@ public sealed class TagPipeline
 
     private async Task ProcessorLoop(CancellationToken ct)
     {
-        var uiTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(Math.Max(80, _cfg.UiUpdateMs)));
         var lastUpdate = DateTime.UtcNow;
         var updateInterval = TimeSpan.FromMilliseconds(_cfg.UiUpdateMs);
-        
+
         try
         {
             while (!ct.IsCancellationRequested)
@@ -153,7 +151,7 @@ public sealed class TagPipeline
                 // Atualiza UI a cada intervalo
                 if ((DateTime.UtcNow - lastUpdate) >= updateInterval)
                 {
-                    _log.Info($"🔔 TagPipeline.SnapshotUpdated disparado. Total={_lastSeen.Count}, Recent={_recent.Count}");
+                    _log.Debug($"[TagPipeline] SnapshotUpdated Total={_lastSeen.Count}, Recent={_recent.Count}");
                     SnapshotUpdated?.Invoke(this, EventArgs.Empty);
                     lastUpdate = DateTime.UtcNow;
                 }
@@ -168,7 +166,6 @@ public sealed class TagPipeline
 
     private void ProcessTag(RfidTagReadEventArgs ev)
     {
-        _log.Info($"📖 TagPipeline.ProcessorLoop leu do channel: EPC={ev.Epc}");
         var epc = NormalizeEpc(ev.Epc);
         var now = DateTime.UtcNow;
 
@@ -176,7 +173,7 @@ public sealed class TagPipeline
         if (_lastSeen.TryGetValue(epc, out var last) &&
             (now - last).TotalMilliseconds < _cfg.DebounceMs)
         {
-            _log.Info($"⏭️ Tag {epc} ignorada (debounce)");
+            // HOT PATH: sem log por tag
             return;
         }
 
@@ -230,7 +227,7 @@ public sealed class TagPipeline
                 while (_recent.Count > 30 && _recent.TryDequeue(out _)) { }
             }
         }
-        _log.Info($"✅ Tag {epc} processada e enfileirada. Total: {_lastSeen.Count}, Recent: {_recent.Count}");
+        // HOT PATH: evitar log por tag
     }
 
     private static string NormalizeEpc(string epc)
