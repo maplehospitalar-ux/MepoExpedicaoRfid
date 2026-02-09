@@ -229,15 +229,25 @@ public partial class SaidaViewModel : ObservableObject
         Cancelar = new AsyncRelayCommand(async () =>
         {
             if (string.IsNullOrWhiteSpace(SessionId)) return;
+
             await _realtime.BroadcastReaderStopAsync(SessionId);
-            var ok = await _supabase.CancelarSessaoEdgeAsync(SessionId, "Cancelado pelo operador").ConfigureAwait(true);
+
+            // IMPORTANTE:
+            // Cancelar a sessão RFID NÃO deve cancelar/remover o pedido da fila.
+            // O edge function (rfid-session-manager: cancelar_sessao) pode alterar status do pedido no MEPO.
+            // Aqui usamos o RPC cancelar_sessao_rfid (sessão) para manter o pedido como pendente.
+            var ok = await _supabase.CancelarSessaoAsync(SessionId, _cfg.Device.Id).ConfigureAwait(true);
             if (ok)
             {
-                _log.Info("⛔ Sessão cancelada.");
+                _log.Info("⛔ Sessão cancelada (apenas sessão; pedido permanece na fila).");
                 _pipeline.ResetSessionCounters();
                 _session.CancelSession("Cancelado pelo operador");
-                PedidoNumero = "";
+
+                // Mantém PedidoNumero/Origem/Cliente visíveis, mas remove sessão ativa
                 SessionId = "";
+
+                // Volta pra Fila (opcional, melhora a dinâmica do operador)
+                _nav.Fila?.Execute(null);
             }
         });
 
