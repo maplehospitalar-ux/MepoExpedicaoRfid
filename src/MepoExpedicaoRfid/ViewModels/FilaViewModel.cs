@@ -16,6 +16,9 @@ public partial class FilaViewModel : ObservableObject
     private readonly PrintService _printer;
     private readonly AppLogger _log;
 
+    // Auto-impressão: garante que um mesmo documento não imprima em loop a cada refresh
+    private readonly HashSet<Guid> _autoPrinted = new();
+
     public event EventHandler<JsonElement>? OnPedidoParaImpressao;
 
     public ObservableCollection<FilaItem> Pendentes => _fila.Pendentes;
@@ -41,6 +44,37 @@ public partial class FilaViewModel : ObservableObject
             _log.Info("🔄 Atualizando fila...");
             await _fila.RefreshAsync();
             _log.Info("✅ Fila atualizada");
+
+            // Estratégia mais confiável que depender do postgres_changes:
+            // ao atualizar a fila, tenta auto-imprimir itens em status 'preparando'.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var candidatos = _fila.Pendentes.Concat(_fila.EmSeparacao)
+                        .Where(x => string.Equals((x.Status ?? "").Trim(), "preparando", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var it in candidatos)
+                    {
+                        if (it.Id == Guid.Empty) continue;
+                        if (_autoPrinted.Contains(it.Id)) continue;
+
+                        _autoPrinted.Add(it.Id);
+                        _log.Info($"[AUTO-PRINT] Pedido na fila (status=preparando) doc_id={it.Id} origem={it.Origem} numero={it.NumeroPedido} -> imprimindo...");
+
+                        var printText = await _fila.BuildPrintTextAsync(it.Id);
+                        if (!string.IsNullOrWhiteSpace(printText))
+                            _printer.PrintText(printText);
+                        else
+                            _log.Warn($"[AUTO-PRINT] Texto de impressão vazio para doc_id={it.Id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.Warn($"[AUTO-PRINT] Falha ao auto-imprimir via refresh: {ex.Message}");
+                }
+            });
         });
 
         AbrirPedido = new AsyncRelayCommand(async () =>
@@ -52,6 +86,25 @@ public partial class FilaViewModel : ObservableObject
             }
 
             _log.Info($"▶️ Abrindo pedido da fila: {Selected.NumeroPedido} ({Selected.Origem})");
+
+            // Auto-impressão imediata ao "importar/abrir" o pedido da fila (fluxo do operador)
+            try
+            {
+                if (Selected.Id != Guid.Empty && !_autoPrinted.Contains(Selected.Id))
+                {
+                    _autoPrinted.Add(Selected.Id);
+                    _log.Info($"[AUTO-PRINT] AbrirPedido -> imprimindo doc_id={Selected.Id}...");
+                    var printText = await _fila.BuildPrintTextAsync(Selected.Id).ConfigureAwait(true);
+                    if (!string.IsNullOrWhiteSpace(printText))
+                        _printer.PrintText(printText);
+                    else
+                        _log.Warn($"[AUTO-PRINT] Texto de impressão vazio para doc_id={Selected.Id}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"[AUTO-PRINT] Falha ao imprimir ao abrir pedido: {ex.Message}");
+            }
 
             // Carrega pedido na tela de Saída (cria sessão ao abrir, conforme regra)
             var ok = await _saida.OpenFromFilaAsync(Selected).ConfigureAwait(true);
