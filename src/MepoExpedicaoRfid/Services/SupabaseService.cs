@@ -167,10 +167,13 @@ public sealed class SupabaseService
     }
 
     public async Task<IReadOnlyList<DocumentoItemResumo>> GetDocumentoItensResumoAsync(Guid documentoId)
-    { 
+    {
         await EnsureConnectedAsync();
+
+        // RLS: o desktop não consegue ler direto documentos_comerciais_itens.
+        // Usamos a view exposta para o C#.
         var select = "sku,descricao,quantidade,preco_unitario,valor_total";
-        var path = $"/rest/v1/documentos_comerciais_itens?select={Uri.EscapeDataString(select)}&documento_id=eq.{Uri.EscapeDataString(documentoId.ToString())}&order=sku.asc";
+        var path = $"/rest/v1/v_documentos_comerciais_itens_csharp?select={Uri.EscapeDataString(select)}&documento_id=eq.{Uri.EscapeDataString(documentoId.ToString())}&order=sku.asc";
         using var req = NewAuthedRequest(HttpMethod.Get, path);
         using var resp = await _http.SendAsync(req);
         var body = await resp.Content.ReadAsStringAsync();
@@ -179,6 +182,24 @@ public sealed class SupabaseService
 
         var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         return JsonSerializer.Deserialize<List<DocumentoItemResumo>>(body, opts) ?? new();
+    }
+
+    public async Task<PedidoPrintPayload?> GetPedidoPrintPayloadAsync(string origem, string numero)
+    {
+        await EnsureConnectedAsync();
+        if (string.IsNullOrWhiteSpace(origem) || string.IsNullOrWhiteSpace(numero)) return null;
+
+        var select = "documento_id,numero,origem,cliente_nome,valor_total,is_sem_nf,observacao_expedicao,status_expedicao,itens";
+        var path = $"/rest/v1/v_pedido_print_payload?select={Uri.EscapeDataString(select)}&origem=eq.{Uri.EscapeDataString(origem.Trim().ToUpperInvariant())}&numero=eq.{Uri.EscapeDataString(numero.Trim())}&limit=1";
+        using var req = NewAuthedRequest(HttpMethod.Get, path);
+        using var resp = await _http.SendAsync(req);
+        var body = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Erro ao buscar payload de impressão {origem}/{numero}: {resp.StatusCode} {body}");
+
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var list = JsonSerializer.Deserialize<List<PedidoPrintPayload>>(body, opts) ?? new();
+        return list.FirstOrDefault();
     }
 
     public async Task<TagHistoricoDto>  GetTagHistoricoAsync(string epc, int limit = 200)
@@ -199,9 +220,9 @@ public sealed class SupabaseService
             using var req = NewAuthedRequest(HttpMethod.Get, pathCur);
             using var resp = await _http.SendAsync(req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
-            
+
             _log.Debug($"Resposta rfid_tags_estoque: {resp.StatusCode} - {body}");
-            
+
             if (resp.IsSuccessStatusCode)
             {
                 using var doc = JsonDocument.Parse(body);
@@ -219,7 +240,7 @@ public sealed class SupabaseService
                         UpdatedAt = first.TryGetProperty("updated_at", out var ua) ? ua.GetDateTime() : null,
                     };
                     _log.Info($"Tag encontrada: SKU={current.Sku}, Lote={current.Lote}, Status={current.Status}");
-                    
+
                     // Buscar descrição do produto se tiver SKU
                     if (!string.IsNullOrEmpty(current.Sku))
                     {
@@ -252,8 +273,8 @@ public sealed class SupabaseService
                 }
             }
         }
-        catch (Exception ex) 
-        { 
+        catch (Exception ex)
+        {
             _log.Error($"Erro ao buscar estado atual da tag: {ex.Message}");
         }
 
@@ -263,27 +284,27 @@ public sealed class SupabaseService
         {
             var select = "id,epc,tipo,sku,descricao,lote,numero_pedido,operador,local,created_at";
             var path = $"/rest/v1/v_tag_historico_completo?select={Uri.EscapeDataString(select)}&epc=eq.{Uri.EscapeDataString(norm)}&order=created_at.desc&limit={limit}";
-            
+
             _log.Debug($"Consultando view: {path}");
-            
+
             using var req = NewAuthedRequest(HttpMethod.Get, path);
             using var resp = await _http.SendAsync(req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
-            
+
             _log.Debug($"Resposta v_tag_historico_completo: {resp.StatusCode} - {body.Substring(0, Math.Min(500, body.Length))}");
-            
+
             if (!resp.IsSuccessStatusCode)
             {
                 _log.Error($"Erro ao consultar view: {resp.StatusCode} - {body}");
                 throw new Exception($"View retornou {resp.StatusCode}: {body}");
             }
-            
-            var options = new JsonSerializerOptions 
-            { 
+
+            var options = new JsonSerializerOptions
+            {
                 PropertyNameCaseInsensitive = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
-            
+
             movimentos = JsonSerializer.Deserialize<List<TagMovement>>(body, options) ?? new();
             _log.Info($"Histórico: {movimentos.Count} eventos encontrados");
         }
@@ -296,7 +317,7 @@ public sealed class SupabaseService
 
         var result = new TagHistoricoDto { Current = current, Movimentos = movimentos };
         _log.Info($"Retornando TagHistoricoDto - Current={(current != null ? $"SKU:{current.Sku}" : "NULL")}, Movimentos={movimentos.Count}");
-        
+
         return result;
     }
 
@@ -553,25 +574,25 @@ public sealed class SupabaseService
     {
         [System.Text.Json.Serialization.JsonPropertyName("success")]
         public bool Success { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("session_id")]
         public string? SessionId { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("receipt_code")]
         public string? ReceiptCode { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("existing")]
         public bool Existing { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("entrada_id")]
         public string? EntradaId { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("internal_number")]
         public string? InternalNumber { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("message")]
         public string? Message { get; set; }
-        
+
         [System.Text.Json.Serialization.JsonPropertyName("error_message")]
         public string? ErrorMessage { get; set; }
     }

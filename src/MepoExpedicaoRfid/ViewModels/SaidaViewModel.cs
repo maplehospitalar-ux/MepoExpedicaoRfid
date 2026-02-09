@@ -331,25 +331,12 @@ public partial class SaidaViewModel : ObservableObject
         ItensResumo.Clear();
         try
         {
-            // Em alguns cenários (ex.: itens vindos do UNION de sessões), o Id pode não ser o documento_id.
-            // Tentamos primeiro com item.Id; se vier vazio, resolvemos pelo par (origem, numero_pedido).
+            // RLS: itens do pedido são expostos via view v_documentos_comerciais_itens_csharp.
+            // O Id do item da fila (v_fila_expedicao_csharp) é o documento_id, então usamos diretamente.
             var docId = item.Id;
-            _log.Info($"📦 Carregando itens do pedido: origem={origem}, numero={PedidoNumero}, fila_id={item.Id}");
+            _log.Info($"📦 Carregando itens do pedido (view): origem={origem}, numero={PedidoNumero}, documento_id={docId}");
             var itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
-            _log.Info($"📦 Itens por documento_id=fila_id: count={itens.Count}");
-
-            if (itens.Count == 0)
-            {
-                var resolvedDocId = await _supabase.GetDocumentoIdByOrigemNumeroPedidoAsync(origem, PedidoNumero).ConfigureAwait(true);
-                _log.Info($"📦 Resolve documento_id por origem+numero => {resolvedDocId}");
-                if (resolvedDocId.HasValue)
-                {
-                    docId = resolvedDocId.Value;
-                    itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
-                    _log.Info($"📦 Itens por documento_id resolvido: count={itens.Count}");
-                }
-            }
-
+            _log.Info($"📦 Itens carregados: count={itens.Count}");
             foreach (var it in itens) ItensResumo.Add(it);
         }
         catch (Exception ex)

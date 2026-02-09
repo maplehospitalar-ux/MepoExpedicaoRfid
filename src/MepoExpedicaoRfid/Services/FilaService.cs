@@ -13,23 +13,36 @@ public sealed class FilaService
     {
         try
         {
-            // Busca dados básicos na view da fila (cliente, numero_pedido, origem)
+            // Preferir o payload pronto (cabecalho + itens) para impressão.
             var rows = await _supabase.GetFilaAsync(new[] { "na_fila", "preparando", "processando", "finalizada" }, 300);
             var row = rows.FirstOrDefault(r => r.Id == documentoId);
 
-            var origem = row?.Origem ?? "";
-            var numero = row?.NumeroPedido ?? "";
-            var cliente = row?.Cliente ?? "";
+            var origem = (row?.Origem ?? "").Trim().ToUpperInvariant();
+            var numero = (row?.NumeroPedido ?? "").Trim();
 
-            var itens = await _supabase.GetDocumentoItensResumoAsync(documentoId);
+            if (string.IsNullOrWhiteSpace(origem) || string.IsNullOrWhiteSpace(numero))
+                return null;
+
+            var payload = await _supabase.GetPedidoPrintPayloadAsync(origem, numero);
+            if (payload is null) return null;
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"Pedido: {numero}  Origem: {origem}");
-            if (!string.IsNullOrWhiteSpace(cliente)) sb.AppendLine($"Cliente: {cliente}");
+            sb.AppendLine($"Pedido: {payload.Numero}  Origem: {payload.Origem}");
+            if (!string.IsNullOrWhiteSpace(payload.ClienteNome)) sb.AppendLine($"Cliente: {payload.ClienteNome}");
+            if (payload.IsSemNf == true) sb.AppendLine("*** PEDIDO SEM NF ***");
+            if (!string.IsNullOrWhiteSpace(payload.ObservacaoExpedicao)) sb.AppendLine(payload.ObservacaoExpedicao);
             sb.AppendLine(new string('-', 32));
 
-            foreach (var it in itens)
-                sb.AppendLine($"{it.Sku}  {it.Quantidade:0.##}  {it.Descricao}");
+            if (payload.Itens.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var it in payload.Itens.EnumerateArray())
+                {
+                    var sku = it.TryGetProperty("sku", out var s) ? s.GetString() : "";
+                    var desc = it.TryGetProperty("descricao", out var d) ? d.GetString() : "";
+                    var qtd = it.TryGetProperty("quantidade", out var q) ? q.ToString() : "";
+                    sb.AppendLine($"{sku}  {qtd}  {desc}");
+                }
+            }
 
             return sb.ToString();
         }
