@@ -331,13 +331,41 @@ public partial class SaidaViewModel : ObservableObject
         ItensResumo.Clear();
         try
         {
-            // RLS: itens do pedido são expostos via view v_documentos_comerciais_itens_csharp.
-            // O Id do item da fila (v_fila_expedicao_csharp) é o documento_id, então usamos diretamente.
+            // 1) tenta por documento_id via view v_documentos_comerciais_itens_csharp
             var docId = item.Id;
             _log.Info($"📦 Carregando itens do pedido (view): origem={origem}, numero={PedidoNumero}, documento_id={docId}");
             var itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
-            _log.Info($"📦 Itens carregados: count={itens.Count}");
-            foreach (var it in itens) ItensResumo.Add(it);
+            _log.Info($"📦 Itens carregados por documento_id: count={itens.Count}");
+
+            // 2) fallback robusto: payload pronto (v_pedido_print_payload)
+            if (itens.Count == 0)
+            {
+                var payload = await _supabase.GetPedidoPrintPayloadAsync(origem, PedidoNumero).ConfigureAwait(true);
+                if (payload is not null)
+                {
+                    _log.Info($"📦 Payload encontrado: documento_id={payload.DocumentoId}");
+                    if (!string.IsNullOrWhiteSpace(payload.ClienteNome)) ClienteNome = payload.ClienteNome;
+
+                    if (payload.Itens.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var el in payload.Itens.EnumerateArray())
+                        {
+                            ItensResumo.Add(new DocumentoItemResumo
+                            {
+                                Sku = el.TryGetProperty("sku", out var s) ? s.GetString() : null,
+                                Descricao = el.TryGetProperty("descricao", out var d) ? d.GetString() : null,
+                                Quantidade = el.TryGetProperty("quantidade", out var q) ? q.GetDecimal() : 0,
+                                PrecoUnitario = el.TryGetProperty("preco_unitario", out var pu) && pu.ValueKind != System.Text.Json.JsonValueKind.Null ? pu.GetDecimal() : null,
+                                ValorTotal = el.TryGetProperty("valor_total", out var vt) && vt.ValueKind != System.Text.Json.JsonValueKind.Null ? vt.GetDecimal() : null,
+                            });
+                        }
+                    }
+                }
+            }
+            else
+            {
+                foreach (var it in itens) ItensResumo.Add(it);
+            }
         }
         catch (Exception ex)
         {
