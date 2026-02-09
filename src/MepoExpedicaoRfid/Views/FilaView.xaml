@@ -25,25 +25,104 @@
 
   <StackPanel Grid.Column="0">
     <DockPanel Margin="0,0,0,10">
-      <TextBlock Text="Pendentes" FontWeight="SemiBold" DockPanel.Dock="Left"/>
+      <TextBlock Text="{Binding Pendentes.Count, StringFormat=Pendentes ({0})}" FontWeight="SemiBold" DockPanel.Dock="Left"/>
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
         <Button Content="Atualizar" Command="{Binding Refresh}" Padding="8,4" Margin="0,0,8,0"/>
         <Button Content="Abrir" Command="{Binding AbrirPedido}" Padding="8,4"/>
       </StackPanel>
     </DockPanel>
 
-    <ListBox ItemsSource="{Binding Pendentes}" SelectedItem="{Binding Selected, Mode=TwoWay}" BorderThickness="0">
+    <ListBox ItemsSource="{Binding Pendentes}"
+             SelectedItem="{Binding Selected, Mode=TwoWay}"
+             BorderThickness="0"
+             Background="Transparent"
+             ScrollViewer.VerticalScrollBarVisibility="Auto">
+      <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem">
+          <Setter Property="Margin" Value="0,0,0,10"/>
+          <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+          <Setter Property="Background" Value="Transparent"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="Outer" Background="Transparent" CornerRadius="12">
+                  <ContentPresenter/>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="Outer" Property="BorderBrush" Value="#4299E1"/>
+                    <Setter TargetName="Outer" Property="BorderThickness" Value="2"/>
+                  </Trigger>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Outer" Property="BorderBrush" Value="#80CBD5E0"/>
+                    <Setter TargetName="Outer" Property="BorderThickness" Value="1"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </ListBox.ItemContainerStyle>
+
       <ListBox.ItemTemplate>
         <DataTemplate>
-          <Border Style="{StaticResource CardBorder}">
-            <StackPanel>
-              <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding Cliente}" Opacity="0.75" Margin="0,4,0,0"/>
-              <DockPanel Margin="0,10,0,0">
-                <TextBlock Text="{Binding TotalItens, StringFormat=Itens: {0}}" Opacity="0.75" DockPanel.Dock="Left"/>
-                <TextBlock Text="{Binding Prioridade, StringFormat=Pri: {0}}" Opacity="0.75" DockPanel.Dock="Right"/>
-              </DockPanel>
-            </StackPanel>
+          <Border Style="{StaticResource CardBorder}" Padding="0">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+
+              <!-- Faixa de status -->
+              <Border Grid.Column="0" CornerRadius="12,0,0,12">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="Background" Value="#ED8936"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Status}" Value="na_fila">
+                        <Setter Property="Background" Value="#ED8936"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Status}" Value="preparando">
+                        <Setter Property="Background" Value="#ECC94B"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Status}" Value="processando">
+                        <Setter Property="Background" Value="#4299E1"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding Status}" Value="finalizada">
+                        <Setter Property="Background" Value="#48BB78"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+              </Border>
+
+              <Grid Grid.Column="1" Margin="14,12">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0">
+                  <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
+                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
+                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                  </Border>
+                </DockPanel>
+
+                <TextBlock Grid.Row="1" Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+
+                <DockPanel Grid.Row="2" Margin="0,10,0,0">
+                  <Border Background="#F8FAFC" CornerRadius="999" Padding="8,2" DockPanel.Dock="Left">
+                    <TextBlock Text="{Binding TotalItens, StringFormat=Itens: {0}}" FontSize="12" Opacity="0.85"/>
+                  </Border>
+                  <Border Background="#F8FAFC" CornerRadius="999" Padding="8,2" DockPanel.Dock="Left" Margin="8,0,0,0">
+                    <TextBlock Text="{Binding Prioridade, StringFormat=Pri: {0}}" FontSize="12" Opacity="0.85"/>
+                  </Border>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding CriadoEm, StringFormat={}{0:dd/MM HH:mm}}" FontSize="12" Opacity="0.65"/>
+                </DockPanel>
+              </Grid>
+            </Grid>
           </Border>
         </DataTemplate>
       </ListBox.ItemTemplate>
@@ -53,16 +132,38 @@
   </StackPanel>
 
   <StackPanel Grid.Column="1" Margin="12,0,12,0">
-    <TextBlock Text="Em separação" FontWeight="SemiBold" Margin="0,0,0,10"/>
+    <TextBlock Text="{Binding EmSeparacao.Count, StringFormat=Em separação ({0})}" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
     <ItemsControl ItemsSource="{Binding EmSeparacao}">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <Border Style="{StaticResource CardBorder}">
-            <StackPanel>
-              <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding Cliente}" Opacity="0.75" Margin="0,4,0,0"/>
-              <TextBlock Text="{Binding TagsLidas, StringFormat=Tags lidas: {0}}" Opacity="0.75" Margin="0,8,0,0"/>
-            </StackPanel>
+          <Border Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,10">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+
+              <Border Grid.Column="0" Background="#4299E1" CornerRadius="12,0,0,12"/>
+
+              <Grid Grid.Column="1" Margin="14,12">
+                <DockPanel>
+                  <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
+                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
+                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                  </Border>
+                </DockPanel>
+
+                <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+
+                <DockPanel Margin="0,10,0,0">
+                  <Border Background="#F8FAFC" CornerRadius="999" Padding="8,2" DockPanel.Dock="Left">
+                    <TextBlock Text="{Binding TagsLidas, StringFormat=Tags lidas: {0}}" FontSize="12" Opacity="0.85"/>
+                  </Border>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding IniciadoEm, StringFormat={}{0:dd/MM HH:mm}}" FontSize="12" Opacity="0.65"/>
+                </DockPanel>
+              </Grid>
+            </Grid>
           </Border>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
@@ -70,16 +171,36 @@
   </StackPanel>
 
   <StackPanel Grid.Column="2">
-    <TextBlock Text="Finalizados" FontWeight="SemiBold" Margin="0,0,0,10"/>
+    <TextBlock Text="{Binding Finalizados.Count, StringFormat=Finalizados ({0})}" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
     <ItemsControl ItemsSource="{Binding Finalizados}">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <Border Style="{StaticResource CardBorder}">
-            <StackPanel>
-              <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding Cliente}" Opacity="0.75" Margin="0,4,0,0"/>
-              <TextBlock Text="{Binding FinalizadoEm, StringFormat=Finalizado: {0:dd/MM HH:mm}}" Opacity="0.75" Margin="0,8,0,0"/>
-            </StackPanel>
+          <Border Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,10">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+
+              <Border Grid.Column="0" Background="#48BB78" CornerRadius="12,0,0,12"/>
+
+              <Grid Grid.Column="1" Margin="14,12">
+                <DockPanel>
+                  <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
+                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
+                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                  </Border>
+                </DockPanel>
+
+                <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+
+                <DockPanel Margin="0,10,0,0">
+                  <TextBlock DockPanel.Dock="Left" Text="{Binding TotalItens, StringFormat=Itens: {0}}" FontSize="12" Opacity="0.75"/>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding FinalizadoEm, StringFormat=Finalizado: {0:dd/MM HH:mm}}" FontSize="12" Opacity="0.65"/>
+                </DockPanel>
+              </Grid>
+            </Grid>
           </Border>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
