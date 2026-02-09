@@ -376,6 +376,20 @@ public sealed class SupabaseService
         // Caso mais comum: já é número de pedido.
         if (raw.All(char.IsDigit)) return raw;
 
+        // Caso comum no MEPO: session_id = SAIDA_<ORIGEM>_<NUMERO_PEDIDO>_<ID>
+        // Ex: SAIDA_CONTAAZUL_865_1770652139312
+        try
+        {
+            var parts = raw.Split('_', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length >= 4 && parts[0].Equals("SAIDA", StringComparison.OrdinalIgnoreCase))
+            {
+                var numero = parts[2];
+                if (!string.IsNullOrWhiteSpace(numero) && numero.All(char.IsDigit))
+                    return numero;
+            }
+        }
+        catch { }
+
         // 1) tenta view da fila (campo numero_pedido)
         try
         {
