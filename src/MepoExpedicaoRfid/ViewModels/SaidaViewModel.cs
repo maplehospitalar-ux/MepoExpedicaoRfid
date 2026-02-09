@@ -20,6 +20,12 @@ public partial class SaidaViewModel : ObservableObject
 
     [ObservableProperty] private string pedidoNumero = "";
     [ObservableProperty] private string sessionId = "";
+
+    // Origem do pedido (OMIE / CONTAAZUL / LEXOS / MANUAL) selecionada pelo operador
+    [ObservableProperty] private string origemSelecionada = "OMIE";
+
+    public ObservableCollection<string> Origens { get; } = new() { "OMIE", "CONTAAZUL", "LEXOS", "MANUAL" };
+
     [ObservableProperty] private int totalTags;
     [ObservableProperty] private int totalEsperado;
     [ObservableProperty] private int skusUnicos;
@@ -54,7 +60,12 @@ public partial class SaidaViewModel : ObservableObject
         CriarOuAbrirSessao = new AsyncRelayCommand(async () =>
         {
             if (string.IsNullOrWhiteSpace(PedidoNumero)) return;
-            var result = await _supabase.CriarSessaoSaidaAsync("OMIE", PedidoNumero).ConfigureAwait(true);
+
+            var origem = string.IsNullOrWhiteSpace(OrigemSelecionada)
+                ? "OMIE"
+                : OrigemSelecionada.Trim().ToUpperInvariant();
+
+            var result = await _supabase.CriarSessaoSaidaAsync(origem, PedidoNumero).ConfigureAwait(true);
             if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
             {
                 _log.Warn($"Falha ao criar sessão de saída: {result.ErrorMessage ?? result.Message}");
@@ -66,7 +77,7 @@ public partial class SaidaViewModel : ObservableObject
             {
                 SessionId = SessionId,
                 Tipo = SessionType.Saida,
-                Origem = "OMIE",
+                Origem = origem,
                 VendaNumero = PedidoNumero,
                 ReaderId = _cfg.Device.Id,
                 ClientType = _cfg.Device.ClientType

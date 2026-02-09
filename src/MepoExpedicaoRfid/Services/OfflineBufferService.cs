@@ -58,6 +58,9 @@ public sealed class OfflineBufferService : IDisposable
         TryAddColumn(conn, "offline_tags_buffer", "entrada_id", "TEXT");
         TryAddColumn(conn, "offline_tags_buffer", "data_fabricacao", "TEXT");
         TryAddColumn(conn, "offline_tags_buffer", "data_validade", "TEXT");
+        // ✅ CORRIGIDO: Adiciona colunas status_anterior e status (substituem status_original/status_novo)
+        TryAddColumn(conn, "offline_tags_buffer", "status_anterior", "TEXT");
+        TryAddColumn(conn, "offline_tags_buffer", "status", "TEXT");
 
         _log.Info($"✅ SQLite database inicializado: {_dbPath}");
     }

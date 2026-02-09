@@ -145,14 +145,19 @@ public sealed class BatchTagInsertService : IDisposable
             lote = t.Lote,
             // ✅ CORRIGIDO: Usa StatusAnterior (não StatusOriginal)
             status_anterior = t.StatusAnterior ?? "available",
-            // ✅ CORRIGIDO: Usa Status (não StatusNovo)
-            status = t.Status ?? "lida",
+            // ✅ CORRIGIDO: status permitido pela tabela rfid_saidas_audit (check constraint)
+            // Padrão: "lida" (ver DOCUMENTACAO_TECNICA_INTEGRACAO.md)
+            // Status aceitos no Supabase (exemplos encontrados): pendente, sincronizado, pending, completed
+            // Usamos "pendente" na criação do audit de saída.
+            status = "pendente",
             // ✅ CORRIGIDO: Formato correto {session_id}:{tag_epc}
             idempotency_key = $"{t.SessionId}:{t.Epc}",
             // ✅ ADICIONADO: Quantidade obrigatória
             quantidade = 1,
-            venda_numero = t.VendaNumero,
-            origem = t.Origem ?? "desktop_csharp"
+            // ✅ CORRIGIDO: venda_numero com valor padrão quando NULL
+            venda_numero = t.VendaNumero ?? "SEM_VENDA",
+            // ✅ CORRIGIDO: origem deve ser OMIE, CONTAAZUL, LEXOS ou MANUAL (maiúsculo)
+            origem = string.IsNullOrWhiteSpace(t.Origem) ? "MANUAL" : t.Origem.Trim().ToUpperInvariant()
         }).ToList());
 
         using var req = new HttpRequestMessage(HttpMethod.Post, $"{_supabase.BaseUrl}/rest/v1/rfid_saidas_audit");

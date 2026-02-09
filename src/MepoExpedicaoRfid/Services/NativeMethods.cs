@@ -104,6 +104,79 @@ internal static class NativeMethods
     [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
     internal static extern int UHFSetBeep(byte enable);
 
+    /// <summary>
+    /// Obtém status do beep.
+    /// Parâmetro: mode = buffer 1 byte (0 = desligado, 1 = ligado)
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFGetBeep(byte[] mode);
+
+    /// <summary>
+    /// Obtém potência atual do reader.
+    /// Parâmetro: uPower = potência 0-30 dBm (ref)
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFGetPower(ref byte uPower);
+
+    /// <summary>
+    /// Configura qual(is) antena(s) usar.
+    /// Parâmetros:
+    ///   - saveflag: 1 = salva em EEPROM, 0 = temporário
+    ///   - buf: 2 bytes (16 bits) - cada bit = 1 antena
+    ///          Exemplo: [0x01, 0x00] = antena 1 apenas
+    ///                   [0x03, 0x00] = antenas 1 e 2
+    ///                   [0xFF, 0xFF] = todas as 16 antenas
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFSetANT(byte saveflag, byte[] buf);
+
+    /// <summary>
+    /// Obtém configuração de antenas.
+    /// Parâmetro: buf = 2 bytes (16 bits máscara de antenas)
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFGetANT(byte[] buf);
+
+    /// <summary>
+    /// Configura região/frequência do reader.
+    /// Parâmetros:
+    ///   - saveflag: 1 = salva em EEPROM, 0 = temporário
+    ///   - region: 0x01 = China1 (920-925 MHz)
+    ///             0x02 = China2 (840-845 MHz)
+    ///             0x04 = Europe (865-868 MHz)
+    ///             0x08 = USA (902-928 MHz)
+    ///             0x16 = Korea
+    ///             0x32 = Japan
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFSetRegion(byte saveflag, byte region);
+
+    /// <summary>
+    /// Obtém região configurada.
+    /// Parâmetro: region = código da região (ref)
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFGetRegion(ref byte region);
+
+    /// <summary>
+    /// Configura modo de leitura (EPC, TID, USER).
+    /// Parâmetros:
+    ///   - saveflag: 1 = salva, 0 = temporário
+    ///   - memory: 0x00 = EPC apenas
+    ///             0x01 = EPC + TID
+    ///   - address: offset inicial (0 = início)
+    ///   - lenth: bytes a ler (0 = padrão, 12 = TID completo)
+    /// Retorna: 0 = sucesso
+    /// </summary>
+    [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+    internal static extern int UHFSetEPCTIDUSERMode(byte saveflag, byte memory, byte address, byte lenth);
+
     #endregion
 
     #region UHFAPI - Inventory (Leitura de Tags)
@@ -189,6 +262,14 @@ internal static class NativeMethods
     /// <summary>Tamanho máximo de um EPC (64 bytes).</summary>
     internal const int MAX_EPC_LENGTH = 64;
 
+    // Regiões/Frequências do Reader
+    internal const byte REGION_CHINA1 = 0x01;   // 920-925 MHz
+    internal const byte REGION_CHINA2 = 0x02;   // 840-845 MHz
+    internal const byte REGION_EUROPE = 0x04;   // 865-868 MHz
+    internal const byte REGION_USA = 0x08;      // 902-928 MHz
+    internal const byte REGION_KOREA = 0x16;    // Korea frequencies
+    internal const byte REGION_JAPAN = 0x32;    // Japan frequencies
+
     #endregion
 
     #region Diagnostics
@@ -224,8 +305,15 @@ internal static class NativeMethods
                 "ComOpenWithBaud",
                 "ClosePort",
                 "UHFSetPower",
+                "UHFGetPower",              // Adicionado: obter potência
                 "UHFGetReaderVersion",
                 "UHFSetBeep",
+                "UHFGetBeep",               // Adicionado: obter status beep
+                "UHFSetANT",                // Adicionado: configurar antenas
+                "UHFGetANT",                // Adicionado: obter config antenas
+                "UHFSetRegion",             // Adicionado: configurar região/frequência
+                "UHFGetRegion",             // Adicionado: obter região
+                "UHFSetEPCTIDUSERMode",     // Adicionado: modo de leitura EPC/TID/USER
                 "UHFInventory",
                 "UHFInventorySingle",
                 "UHFStopGet",              // Corrigido: UHFStopInventory não existe

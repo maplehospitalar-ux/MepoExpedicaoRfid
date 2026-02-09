@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MepoExpedicaoRfid.Models;
 
 namespace MepoExpedicaoRfid.Services;
 
@@ -116,14 +117,128 @@ public sealed class RfidReaderService : IDisposable
                 _log.Warn("⚠️ Não conseguiu obter versão do firmware (continuando)");
             }
             
-            // Configura potência máxima
+            // 🔥 CONFIGURAÇÃO CRÍTICA DE HARDWARE (Base Fabrica)
+            
+            // 1. Configura antena (ativa antena 1)
+            try
+            {
+                _log.Info("Configurando antena 1...");
+                byte[] antBuf = new byte[] { 0x01, 0x00 };  // Bit 0 = 1 (antena 1)
+                int antResult = NativeMethods.UHFSetANT(1, antBuf);  // 1 = salva em EEPROM
+                
+                if (antResult == NativeMethods.UHFAPI_SUCCESS)
+                {
+                    _log.Info("✅ Antena 1 configurada");
+                    
+                    // Valida configuração
+                    byte[] antCheck = new byte[2];
+                    if (NativeMethods.UHFGetANT(antCheck) == NativeMethods.UHFAPI_SUCCESS)
+                    {
+                        _log.Info($"   Máscara de antenas: 0x{antCheck[0]:X2}{antCheck[1]:X2}");
+                    }
+                }
+                else
+                {
+                    _log.Warn($"⚠️ Falha ao configurar antena (código {antResult})");
+                }
+            }
+            catch (Exception antEx)
+            {
+                _log.Warn($"⚠️ Erro ao configurar antena: {antEx.Message}");
+            }
+            
+            // 2. Configura região/frequência (China1 = 920-925 MHz)
+            try
+            {
+                _log.Info("Configurando região China1 (920-925 MHz)...");
+                int regionResult = NativeMethods.UHFSetRegion(1, NativeMethods.REGION_CHINA1);
+                
+                if (regionResult == NativeMethods.UHFAPI_SUCCESS)
+                {
+                    _log.Info("✅ Região configurada");
+                    
+                    // Valida configuração
+                    byte regionCheck = 0;
+                    if (NativeMethods.UHFGetRegion(ref regionCheck) == NativeMethods.UHFAPI_SUCCESS)
+                    {
+                        string regionName = regionCheck switch
+                        {
+                            0x01 => "China1 (920-925 MHz)",
+                            0x02 => "China2 (840-845 MHz)",
+                            0x04 => "Europe (865-868 MHz)",
+                            0x08 => "USA (902-928 MHz)",
+                            0x16 => "Korea",
+                            0x32 => "Japan",
+                            _ => $"Desconhecida (0x{regionCheck:X2})"
+                        };
+                        _log.Info($"   Região ativa: {regionName}");
+                    }
+                }
+                else
+                {
+                    _log.Warn($"⚠️ Falha ao configurar região (código {regionResult})");
+                }
+            }
+            catch (Exception regEx)
+            {
+                _log.Warn($"⚠️ Erro ao configurar região: {regEx.Message}");
+            }
+            
+            // 3. Configura modo de leitura (EPC + TID)
+            try
+            {
+                _log.Info("Configurando modo EPC+TID...");
+                int modeResult = NativeMethods.UHFSetEPCTIDUSERMode(1, 0x01, 0, 0);
+                
+                if (modeResult == NativeMethods.UHFAPI_SUCCESS)
+                {
+                    _log.Info("✅ Modo EPC+TID configurado");
+                }
+                else
+                {
+                    _log.Warn($"⚠️ Falha ao configurar modo (código {modeResult})");
+                }
+            }
+            catch (Exception modeEx)
+            {
+                _log.Warn($"⚠️ Erro ao configurar modo: {modeEx.Message}");
+            }
+            
+            // 4. Configura potência máxima
             if (!SetPower(NativeMethods.MAX_POWER))
             {
                 _log.Warn("⚠️ Não conseguiu definir potência máxima");
             }
+            else
+            {
+                // Valida potência
+                try
+                {
+                    byte powerCheck = 0;
+                    if (NativeMethods.UHFGetPower(ref powerCheck) == NativeMethods.UHFAPI_SUCCESS)
+                    {
+                        _log.Info($"   Potência configurada: {powerCheck} dBm");
+                    }
+                }
+                catch (Exception pwEx)
+                {
+                    _log.Warn($"⚠️ Erro ao validar potência: {pwEx.Message}");
+                }
+            }
             
-            // Ativa beep
-            NativeMethods.UHFSetBeep(1);
+            // 5. Ativa beep
+            try
+            {
+                int beepResult = NativeMethods.UHFSetBeep(1);
+                if (beepResult == NativeMethods.UHFAPI_SUCCESS)
+                {
+                    _log.Info("✅ Beep ativado");
+                }
+            }
+            catch (Exception beepEx)
+            {
+                _log.Warn($"⚠️ Erro ao ativar beep: {beepEx.Message}");
+            }
             
             _connected = true;
             ConnectionStateChanged?.Invoke("connected");
@@ -485,26 +600,18 @@ public sealed class RfidReaderService : IDisposable
 
                 _log.Info("✅ Inventário iniciado, aguardando tags...");
 
-                // 2. Loop que lê tags do buffer
+                // 2. Loop que lê tags do buffer usando wrapper correto (base fabrica)
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                byte[] buffer = new byte[256];
                 
                 while (sw.Elapsed < timeout && !ct.IsCancellationRequested)
                 {
-                    int len = 0;
-                    int result = NativeMethods.UHFGetReceived_EX(ref len, buffer);
+                    // 🔥 USA WRAPPER COMPLETO (como na base fabrica)
+                    TagInfo? tagInfo = GetReceivedTagInfo();
                     
-                    if (result == NativeMethods.UHFAPI_SUCCESS && len > 0)
+                    if (tagInfo != null && !string.IsNullOrWhiteSpace(tagInfo.Epc))
                     {
-                        _log.Debug($"📡 Dados recebidos: len={len}");
-                        
-                        // Parse do buffer
-                        string? epc = ParseEpcFromBuffer(buffer, len);
-                        if (!string.IsNullOrWhiteSpace(epc))
-                        {
-                            _log.Info($"✅ Tag consultada: {epc}");
-                            return epc;
-                        }
+                        _log.Info($"✅ Tag consultada: {tagInfo}");
+                        return tagInfo.Epc;
                     }
                     
                     await Task.Delay(5, ct);  // Sleep pequeno como na Base Fabrica
@@ -535,8 +642,129 @@ public sealed class RfidReaderService : IDisposable
     }
 
     /// <summary>
+    /// Wrapper completo para GetReceived_EX (equivalente a uhfGetReceived() da base fabrica).
+    /// Parseia buffer complexo e retorna objeto TagInfo estruturado.
+    /// CRITICAL: Esta é a implementação CORRETA usada pela base fabrica!
+    /// </summary>
+    private TagInfo? GetReceivedTagInfo()
+    {
+        try
+        {
+            int uLen = 0;
+            byte[] bufData = new byte[150];
+            
+            int result = NativeMethods.UHFGetReceived_EX(ref uLen, bufData);
+            
+            if (result != NativeMethods.UHFAPI_SUCCESS || uLen == 0)
+            {
+                return null;
+            }
+            
+            // Parse do buffer (formato base fabrica)
+            // Formato: [uii_len][pc_2bytes][epc...][crc_2bytes][tid_len][tid...][rssi_2bytes][ant]
+            
+            int uii_len = bufData[0];  // Comprimento total UII (PC + EPC + CRC)
+            if (uii_len < 2 || uii_len + 2 > uLen) return null;
+            
+            int tid_leng = bufData[uii_len + 1];  // Comprimento TID
+            int tid_idex = uii_len + 2;           // Índice inicial TID
+            int rssi_index = 1 + uii_len + 1 + tid_leng;
+            int ant_index = rssi_index + 2;
+            
+            // Valida se buffer tem tamanho suficiente
+            if (ant_index >= uLen) return null;
+            
+            // Converte buffer para string hex
+            string strData = BitConverter.ToString(bufData, 0, uLen).Replace("-", "");
+            
+            // Extrai EPC (remove PC 2 bytes + CRC 2 bytes)
+            // Exemplo: [len][PC_2bytes][EPC_data][CRC_2bytes]
+            //          Substring(6) pula os 2 bytes PC (4 chars hex)
+            //          uii_len * 2 - 4 remove CRC (2 bytes = 4 chars hex)
+            int epcStartIndex = 6;  // Pula: len(2) + PC(4)
+            int epcLength = uii_len * 2 - 4;  // Total - CRC
+            
+            if (epcStartIndex + epcLength > strData.Length) return null;
+            
+            string epc_data = strData.Substring(epcStartIndex, epcLength);
+            
+            // Extrai TID
+            string tid_data = string.Empty;
+            string user_data = string.Empty;
+            
+            if (tid_leng > 0 && (tid_idex * 2 + tid_leng * 2) <= strData.Length)
+            {
+                if (tid_leng > 12)
+                {
+                    tid_data = strData.Substring(tid_idex * 2, 24);  // TID = 12 bytes
+                    user_data = strData.Substring(tid_idex * 2 + 24, (tid_leng - 12) * 2);
+                }
+                else
+                {
+                    tid_data = strData.Substring(tid_idex * 2, tid_leng * 2);
+                }
+            }
+            
+            // Extrai RSSI (2 bytes, signed)
+            string rssi_data = "0.0";
+            try
+            {
+                if (rssi_index * 2 + 4 <= strData.Length)
+                {
+                    string temp = strData.Substring(rssi_index * 2, 4);
+                    int rssiTemp = Convert.ToInt32(temp, 16) - 65535;
+                    float rssiFloat = (float)rssiTemp / 10.0f;
+                    rssi_data = rssiFloat.ToString("F1");
+                    
+                    if (!rssi_data.Contains("."))
+                        rssi_data = rssi_data + ".0";
+                }
+            }
+            catch
+            {
+                rssi_data = "0.0";
+            }
+            
+            // Extrai número da antena
+            string ant_data = "0";
+            try
+            {
+                if (ant_index * 2 + 2 <= strData.Length)
+                {
+                    ant_data = Convert.ToInt32(strData.Substring(ant_index * 2, 2), 16).ToString();
+                }
+            }
+            catch
+            {
+                ant_data = "0";
+            }
+            
+            // Cria objeto TagInfo
+            var info = new TagInfo
+            {
+                Epc = epc_data,
+                Tid = tid_data,
+                Rssi = rssi_data,
+                Ant = ant_data,
+                User = user_data,
+                ReadTime = DateTime.UtcNow
+            };
+            
+            _log.Debug($"📡 Tag parseada: {info}");
+            
+            return info;
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"⚠️ Erro em GetReceivedTagInfo: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Parse do buffer retornado por UHF_GetReceived_EX.
     /// Formato: [epc_len][epc_data...][tid_len][tid_data...][rssi_2bytes][ant]
+    /// OBSOLETO: Use GetReceivedTagInfo() ao invés deste método!
     /// </summary>
     private string? ParseEpcFromBuffer(byte[] buffer, int len)
     {

@@ -196,6 +196,8 @@ public sealed class TagPipeline
                 Epc = epc,
                 SessionId = session.SessionId,
                 Tipo = session.Tipo,
+                Origem = session.Origem,
+                VendaNumero = session.VendaNumero,
                 Sku = sku,
                 Lote = lote,
                 EntradaId = session.EntradaId,

@@ -54,7 +54,7 @@ namespace MepoExpedicaoRfid.Views {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/MepoExpedicaoRfid;component/views/filaview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/MepoExpedicaoRfid;V1.0.0.0;component/views/filaview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\Views\FilaView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

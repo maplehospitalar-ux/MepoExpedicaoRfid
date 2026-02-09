@@ -54,9 +54,11 @@ public class TagItem
 
     /// <summary>
     /// Status atual da tag (era StatusNovo)
+    /// Para saídas: "sold" (vendido/expedido)
+    /// Para entradas: "staged" (recebido)
     /// </summary>
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "lida";
+    public string Status { get; set; } = "pendente";
 
     // ❌ REMOVIDO: Cmc (não existe na tabela rfid_saidas_audit)
 

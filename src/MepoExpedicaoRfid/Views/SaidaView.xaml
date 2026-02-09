@@ -33,7 +33,14 @@
       <StackPanel>
         <TextBlock Text="Pedido / Sessão" Style="{StaticResource Muted}"/>
         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-          <TextBox Width="220" Text="{Binding PedidoNumero, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="Número do pedido" Margin="0,0,10,0"/>
+          <ComboBox Width="140"
+                    ItemsSource="{Binding Origens}"
+                    SelectedItem="{Binding OrigemSelecionada, Mode=TwoWay}"
+                    Margin="0,0,10,0"/>
+          <TextBox Width="220"
+                   Text="{Binding PedidoNumero, UpdateSourceTrigger=PropertyChanged}"
+                   materialDesign:HintAssist.Hint="Número do pedido"
+                   Margin="0,0,10,0"/>
           <Button Content="Criar/Abrir Sessão" Command="{Binding CriarOuAbrirSessao}" Padding="12,6" Background="#4299E1" Foreground="White"/>
         </StackPanel>
         <TextBlock Text="{Binding SessionId, StringFormat=Sessão: {0}}" Opacity="0.75" Margin="0,10,0,0"/>

@@ -1,5 +1,5 @@
 ﻿MepoExpedicaoRfid
-
+1.0.0.0
 
 winexe
 C#
@@ -12,9 +12,9 @@ TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR
 C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\App.xaml
 91597775887
 31050516257
-47-155746698
+501850476254
 237-1182671984
 MainWindow.xaml;Resources\Styles.xaml;Resources\ViewTemplates.xaml;Views\ConfigView.xaml;Views\ConsultaTagView.xaml;Views\DashboardView.xaml;Views\EntradaView.xaml;Views\FilaView.xaml;Views\SaidaView.xaml;
 
-False
+True
 

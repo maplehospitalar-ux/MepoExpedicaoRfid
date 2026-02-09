@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MepoExpedicaoRfid")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8b8f1027a7ba0d1187ea673f62710b96f83aa7da")]
 [assembly: System.Reflection.AssemblyProductAttribute("MepoExpedicaoRfid")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MepoExpedicaoRfid")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
