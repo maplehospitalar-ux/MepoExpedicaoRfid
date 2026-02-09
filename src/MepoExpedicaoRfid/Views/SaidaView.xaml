@@ -110,7 +110,10 @@
             <ItemsControl ItemsSource="{Binding DivergenciasDetalhe}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Text="• {Binding}" TextWrapping="Wrap" Opacity="0.9"/>
+                  <TextBlock TextWrapping="Wrap" Opacity="0.9">
+                    <Run Text="• "/>
+                    <Run Text="{Binding}"/>
+                  </TextBlock>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
