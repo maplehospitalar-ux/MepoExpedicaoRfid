@@ -48,6 +48,7 @@ public partial class SaidaViewModel : ObservableObject
     [ObservableProperty] private double progressPercent;
     [ObservableProperty] private int divergencias;
     [ObservableProperty] private string mensagemDivergencia = "";
+    public ObservableCollection<string> DivergenciasDetalhe { get; } = new();
 
     public ObservableCollection<SkuLoteGroupInfo> Groups { get; } = new();
     public ObservableCollection<string> Recent { get; } = new();
@@ -209,6 +210,20 @@ public partial class SaidaViewModel : ObservableObject
             if (ok)
             {
                 _log.Info("✅ Sessão finalizada.");
+
+                // Se houve divergência, alerta operador (e pode virar procedimento de qualidade)
+                if (DivergenciasDetalhe.Count > 0)
+                {
+                    try
+                    {
+                        var txt = "DIVERGENCIA DETECTADA:\n" + string.Join("\n", DivergenciasDetalhe);
+                        System.Windows.MessageBox.Show(txt, "Divergência", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+
+                        // Imprime um aviso curto para anexar no pedido
+                        _printer.PrintText("*** DIVERGENCIA ***\nPedido: " + PedidoNumero + "\n" + string.Join("\n", DivergenciasDetalhe.Take(12)));
+                    }
+                    catch { }
+                }
 
                 // Guarda resumo da última sessão para exibição + imprimir/copiar
                 LastPedidoNumero = PedidoNumero;
@@ -376,6 +391,16 @@ public partial class SaidaViewModel : ObservableObject
             {
                 foreach (var it in itens) ItensResumo.Add(it);
             }
+
+            // Total esperado (para progresso/divergência)
+            try
+            {
+                TotalEsperado = (int)Math.Round(ItensResumo.Sum(x => x.Quantidade));
+            }
+            catch
+            {
+                TotalEsperado = 0;
+            }
         }
         catch (Exception ex)
         {
@@ -471,16 +496,71 @@ public partial class SaidaViewModel : ObservableObject
         if (TotalEsperado > 0)
         {
             ProgressPercent = Math.Min(100, (TotalTags * 100.0 / TotalEsperado));
-            
-            // Calcula divergências
-            var diff = TotalTags - TotalEsperado;
-            Divergencias = Math.Abs(diff);
+        }
+        else
+        {
+            ProgressPercent = 0;
+        }
 
-            if (diff < 0)
+        // Divergência (qualidade): por SKU (mais útil que só total)
+        DivergenciasDetalhe.Clear();
+        try
+        {
+            var esperadoPorSku = ItensResumo
+                .Where(x => !string.IsNullOrWhiteSpace(x.Sku))
+                .GroupBy(x => x.Sku!.Trim().ToUpperInvariant())
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
+
+            var lidoPorSku = groups
+                .GroupBy(g => (g.Sku ?? "").Trim().ToUpperInvariant())
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
+
+            // SKU lidas não esperadas
+            foreach (var kv in lidoPorSku.OrderBy(k => k.Key))
+            {
+                var sku = kv.Key;
+                if (string.IsNullOrWhiteSpace(sku)) continue;
+                if (!esperadoPorSku.TryGetValue(sku, out var exp))
+                {
+                    DivergenciasDetalhe.Add($"SKU não esperado: {sku} (lido {kv.Value})");
+                }
+                else
+                {
+                    var diff = kv.Value - exp;
+                    if (Math.Abs(diff) > 0.0001m)
+                        DivergenciasDetalhe.Add($"SKU {sku}: esperado {exp} / lido {kv.Value}");
+                }
+            }
+
+            // SKU esperadas que não apareceram
+            foreach (var kv in esperadoPorSku.OrderBy(k => k.Key))
+            {
+                var sku = kv.Key;
+                if (!lidoPorSku.ContainsKey(sku))
+                    DivergenciasDetalhe.Add($"SKU faltando: {sku} (esperado {kv.Value})");
+            }
+
+            // DESCONHECIDO é sempre suspeito
+            if (lidoPorSku.TryGetValue("DESCONHECIDO", out var unk) && unk > 0)
+                DivergenciasDetalhe.Add($"Atenção: {unk} tags com SKU DESCONHECIDO");
+        }
+        catch { }
+
+        // Mensagens resumidas
+        if (TotalEsperado > 0)
+        {
+            var diffTotal = TotalTags - TotalEsperado;
+            Divergencias = Math.Abs(diffTotal);
+
+            if (DivergenciasDetalhe.Count > 0)
+            {
+                MensagemDivergencia = $"⚠️ Divergência detectada ({DivergenciasDetalhe.Count} itens)";
+            }
+            else if (diffTotal < 0)
             {
                 MensagemDivergencia = $"⚠️ Faltam {Divergencias} itens";
             }
-            else if (diff > 0)
+            else if (diffTotal > 0)
             {
                 MensagemDivergencia = $"⚠️ +{Divergencias} itens excedentes";
             }
@@ -491,7 +571,6 @@ public partial class SaidaViewModel : ObservableObject
         }
         else
         {
-            ProgressPercent = 0;
             Divergencias = 0;
             MensagemDivergencia = "";
         }

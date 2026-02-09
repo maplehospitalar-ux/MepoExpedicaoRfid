@@ -101,6 +101,22 @@
         <TextBlock Text="{Binding OrigemSelecionada, StringFormat=Origem: {0}}" Opacity="0.75"/>
         <TextBlock Text="{Binding ClienteNome, StringFormat=Cliente: {0}}" Opacity="0.75" Margin="0,0,0,10"/>
 
+        <!-- Qualidade: divergências por SKU -->
+        <Border Background="#FFF7ED" BorderBrush="#FDBA74" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,10"
+                Visibility="{Binding DivergenciasDetalhe.Count, Converter={StaticResource GreaterThanZeroToVisibilityConverter}}">
+          <StackPanel>
+            <TextBlock Text="Divergência" FontWeight="SemiBold" Foreground="#9A3412"/>
+            <TextBlock Text="{Binding MensagemDivergencia}" Opacity="0.85" Margin="0,4,0,6"/>
+            <ItemsControl ItemsSource="{Binding DivergenciasDetalhe}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="• {Binding}" TextWrapping="Wrap" Opacity="0.9"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
         <TextBlock Text="Itens esperados do pedido" FontWeight="SemiBold" Margin="0,0,0,6"/>
         <DataGrid ItemsSource="{Binding ItensResumo}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Height="220">
           <DataGrid.Columns>
