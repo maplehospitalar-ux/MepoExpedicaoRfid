@@ -25,13 +25,53 @@
 
   <Border Style="{StaticResource CardBorder}" Grid.Column="0">
     <StackPanel>
-      <TextBlock Text="Tags únicas (sessão)" Style="{StaticResource Muted}"/>
-      <TextBlock Text="{Binding TotalTags}" FontSize="36" FontWeight="Bold" Margin="0,6,0,0"/>
-      <TextBlock Text="{Binding ReadsPerSecond}" Opacity="0.7" Margin="0,6,0,0"/>
+      <TextBlock Text="Sessão / Leitura" Style="{StaticResource Muted}"/>
+      <TextBlock Text="{Binding SessaoAtual}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0"/>
+      <DockPanel Margin="0,10,0,0">
+        <StackPanel DockPanel.Dock="Left">
+          <TextBlock Text="Tags únicas" Opacity="0.7"/>
+          <TextBlock Text="{Binding TotalTags}" FontSize="30" FontWeight="Bold"/>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
+          <TextBlock Text="Velocidade" Opacity="0.7" HorizontalAlignment="Right"/>
+          <TextBlock Text="{Binding ReadsPerSecond}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+        </StackPanel>
+      </DockPanel>
+      <TextBlock Text="Realtime: {Binding RealtimeStatus, StringFormat={}{0}}" Opacity="0.7" Margin="0,8,0,0"/>
+      <TextBlock Text="Impressora: {Binding Impressora, StringFormat={}{0}}" Opacity="0.7" Margin="0,4,0,0"/>
     </StackPanel>
   </Border>
 
   <Border Style="{StaticResource CardBorder}" Grid.Column="1" Margin="12,0,12,12">
+    <StackPanel>
+      <TextBlock Text="Fila (resumo)" Style="{StaticResource Muted}"/>
+
+      <Grid Margin="0,12,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1*"/>
+          <ColumnDefinition Width="1*"/>
+          <ColumnDefinition Width="1*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0">
+          <TextBlock Text="Pendentes" Opacity="0.7"/>
+          <TextBlock Text="{Binding Pendentes}" FontSize="28" FontWeight="Bold"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1">
+          <TextBlock Text="Em separação" Opacity="0.7"/>
+          <TextBlock Text="{Binding EmSeparacao}" FontSize="28" FontWeight="Bold"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Text="Finalizados" Opacity="0.7"/>
+          <TextBlock Text="{Binding Finalizados}" FontSize="28" FontWeight="Bold"/>
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Text="Dica: use a FILA para abrir o próximo pedido" Opacity="0.7" Margin="0,10,0,0"/>
+    </StackPanel>
+  </Border>
+
+  <Border Style="{StaticResource CardBorder}" Grid.Column="2">
     <StackPanel>
       <TextBlock Text="Últimas tags" Style="{StaticResource Muted}"/>
       <ItemsControl ItemsSource="{Binding LastTags}" Margin="0,10,0,0">
@@ -41,15 +81,6 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
-    </StackPanel>
-  </Border>
-
-  <Border Style="{StaticResource CardBorder}" Grid.Column="2">
-    <StackPanel>
-      <TextBlock Text="Dicas rápidas" Style="{StaticResource Muted}"/>
-      <TextBlock Text="• Abra a FILA para puxar o próximo pedido" Margin="0,10,0,0" Opacity="0.85"/>
-      <TextBlock Text="• Na SAÍDA você vê Tags / SKUs / Lotes em tempo real" Margin="0,6,0,0" Opacity="0.85"/>
-      <TextBlock Text="• Consulta Tag mostra histórico completo no Supabase" Margin="0,6,0,0" Opacity="0.85"/>
     </StackPanel>
   </Border>
 </Grid>

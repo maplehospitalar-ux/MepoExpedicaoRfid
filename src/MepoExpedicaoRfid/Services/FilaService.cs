@@ -26,12 +26,51 @@ public sealed class FilaService
             var payload = await _supabase.GetPedidoPrintPayloadAsync(origem, numero);
             if (payload is null) return null;
 
-            static string Cut(string? s, int max)
+            static IEnumerable<string> Wrap(string? text, int width)
             {
-                if (string.IsNullOrWhiteSpace(s)) return "";
-                s = s.Trim();
-                if (s.Length <= max) return s;
-                return s.Substring(0, Math.Max(0, max - 1)) + "…";
+                text ??= "";
+                text = text.Trim();
+                if (text.Length == 0) yield break;
+
+                var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var line = "";
+
+                foreach (var w in words)
+                {
+                    if (line.Length == 0)
+                    {
+                        if (w.Length <= width)
+                        {
+                            line = w;
+                        }
+                        else
+                        {
+                            for (int i = 0; i < w.Length; i += width)
+                                yield return w.Substring(i, Math.Min(width, w.Length - i));
+                            line = "";
+                        }
+                        continue;
+                    }
+
+                    if (line.Length + 1 + w.Length <= width)
+                    {
+                        line += " " + w;
+                    }
+                    else
+                    {
+                        yield return line;
+                        if (w.Length <= width)
+                            line = w;
+                        else
+                        {
+                            for (int i = 0; i < w.Length; i += width)
+                                yield return w.Substring(i, Math.Min(width, w.Length - i));
+                            line = "";
+                        }
+                    }
+                }
+
+                if (line.Length > 0) yield return line;
             }
 
             static string PadRight(string s, int len)
@@ -46,24 +85,37 @@ public sealed class FilaService
                 return s.Length >= len ? s.Substring(0, len) : s.PadLeft(len);
             }
 
+            // 8cm costuma aguentar ~42-48 cols dependendo fonte/driver; usamos 42 pra evitar corte.
+            const int PaperCols = 42;
+            const int SkuCols = 10;
+            const int QtdCols = 4;
+            const int DescCols = PaperCols - (SkuCols + 1 + QtdCols + 1);
+
             var sb = new System.Text.StringBuilder();
 
-            // Layout otimizado para térmica (Elgin i9) - 32-42 colunas (depende do driver)
             sb.AppendLine("MEPO - GUIA DE SEPARACAO");
-            sb.AppendLine(new string('=', 32));
+            sb.AppendLine(new string('=', PaperCols));
             sb.AppendLine($"PEDIDO: {payload.Numero}");
             sb.AppendLine($"ORIGEM: {payload.Origem}");
-            if (!string.IsNullOrWhiteSpace(payload.ClienteNome)) sb.AppendLine($"CLIENTE: {Cut(payload.ClienteNome, 28)}");
-            if (payload.IsSemNf == true) sb.AppendLine("*** PEDIDO SEM NF ***");
-            if (!string.IsNullOrWhiteSpace(payload.ObservacaoExpedicao))
+
+            if (!string.IsNullOrWhiteSpace(payload.ClienteNome))
             {
-                sb.AppendLine(new string('-', 32));
-                sb.AppendLine(Cut(payload.ObservacaoExpedicao, 96));
+                foreach (var ln in Wrap("CLIENTE: " + payload.ClienteNome, PaperCols))
+                    sb.AppendLine(ln);
             }
 
-            sb.AppendLine(new string('-', 32));
-            sb.AppendLine($"{PadRight("SKU", 12)} {PadLeft("QTD", 4)} {PadRight("DESC", 13)}");
-            sb.AppendLine(new string('-', 32));
+            if (payload.IsSemNf == true) sb.AppendLine("*** PEDIDO SEM NF ***");
+
+            if (!string.IsNullOrWhiteSpace(payload.ObservacaoExpedicao))
+            {
+                sb.AppendLine(new string('-', PaperCols));
+                foreach (var ln in Wrap(payload.ObservacaoExpedicao, PaperCols))
+                    sb.AppendLine(ln);
+            }
+
+            sb.AppendLine(new string('-', PaperCols));
+            sb.AppendLine($"{PadRight("SKU", SkuCols)} {PadLeft("QTD", QtdCols)} {PadRight("DESCRICAO", DescCols)}");
+            sb.AppendLine(new string('-', PaperCols));
 
             if (payload.Itens.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
@@ -73,15 +125,23 @@ public sealed class FilaService
                     var desc = it.TryGetProperty("descricao", out var d) ? (d.GetString() ?? "") : "";
                     var qtd = it.TryGetProperty("quantidade", out var q) ? q.ToString() : "";
 
-                    sb.AppendLine($"{PadRight(Cut(sku, 12), 12)} {PadLeft(Cut(qtd, 4), 4)} {PadRight(Cut(desc, 13), 13)}");
+                    var wrapped = Wrap(desc, DescCols).ToList();
+                    var firstDesc = wrapped.Count > 0 ? wrapped[0] : "";
+
+                    sb.AppendLine($"{PadRight(sku, SkuCols)} {PadLeft(qtd, QtdCols)} {PadRight(firstDesc, DescCols)}");
+
+                    for (int i = 1; i < wrapped.Count; i++)
+                    {
+                        sb.AppendLine($"{new string(' ', SkuCols)} {new string(' ', QtdCols)} {PadRight(wrapped[i], DescCols)}");
+                    }
                 }
             }
 
-            sb.AppendLine(new string('-', 32));
+            sb.AppendLine(new string('-', PaperCols));
             sb.AppendLine("INICIO: ____/____ ____:____");
             sb.AppendLine("FIM:    ____/____ ____:____");
             sb.AppendLine("RFID:   OK ( )  DIVERG ( )");
-            sb.AppendLine(new string('=', 32));
+            sb.AppendLine(new string('=', PaperCols));
 
             return sb.ToString();
         }

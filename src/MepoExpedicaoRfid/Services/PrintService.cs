@@ -16,6 +16,22 @@ public sealed class PrintService
         _log = log;
     }
 
+    public string? GetPreferredPrinterName()
+    {
+        try
+        {
+            foreach (var p in PrinterSettings.InstalledPrinters)
+            {
+                var name = p?.ToString() ?? "";
+                if (name.Contains("ELGIN", StringComparison.OrdinalIgnoreCase) && name.Contains("i9", StringComparison.OrdinalIgnoreCase))
+                    return name;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
     public void PrintText(string text, string? printerName = null)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -39,6 +55,7 @@ public sealed class PrintService
             // Se não informarem printerName, tenta achar automaticamente a Elgin i9.
             if (string.IsNullOrWhiteSpace(printerName))
             {
+                printerName = GetPreferredPrinterName();
                 try
                 {
                     var installed = new List<string>();
@@ -46,12 +63,6 @@ public sealed class PrintService
                     {
                         var name = p?.ToString() ?? "";
                         if (!string.IsNullOrWhiteSpace(name)) installed.Add(name);
-
-                        if (name.Contains("ELGIN", StringComparison.OrdinalIgnoreCase) && name.Contains("i9", StringComparison.OrdinalIgnoreCase))
-                        {
-                            printerName = name;
-                            break;
-                        }
                     }
 
                     _log.Info($"🖨️ Impressoras instaladas ({installed.Count}): {string.Join(" | ", installed)}");
