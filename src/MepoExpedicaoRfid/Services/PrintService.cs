@@ -28,6 +28,14 @@ public sealed class PrintService
         {
             using var doc = new PrintDocument();
 
+            // Forçar modo retrato (portrait)
+            try
+            {
+                doc.DefaultPageSettings.Landscape = false;
+                doc.DefaultPageSettings.Margins = new Margins(6, 6, 6, 6);
+            }
+            catch { }
+
             // Se não informarem printerName, tenta achar automaticamente a Elgin i9.
             if (string.IsNullOrWhiteSpace(printerName))
             {

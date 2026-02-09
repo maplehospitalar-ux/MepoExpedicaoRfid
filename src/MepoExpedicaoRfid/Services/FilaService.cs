@@ -26,23 +26,62 @@ public sealed class FilaService
             var payload = await _supabase.GetPedidoPrintPayloadAsync(origem, numero);
             if (payload is null) return null;
 
+            static string Cut(string? s, int max)
+            {
+                if (string.IsNullOrWhiteSpace(s)) return "";
+                s = s.Trim();
+                if (s.Length <= max) return s;
+                return s.Substring(0, Math.Max(0, max - 1)) + "…";
+            }
+
+            static string PadRight(string s, int len)
+            {
+                s ??= "";
+                return s.Length >= len ? s.Substring(0, len) : s.PadRight(len);
+            }
+
+            static string PadLeft(string s, int len)
+            {
+                s ??= "";
+                return s.Length >= len ? s.Substring(0, len) : s.PadLeft(len);
+            }
+
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"Pedido: {payload.Numero}  Origem: {payload.Origem}");
-            if (!string.IsNullOrWhiteSpace(payload.ClienteNome)) sb.AppendLine($"Cliente: {payload.ClienteNome}");
+
+            // Layout otimizado para térmica (Elgin i9) - 32-42 colunas (depende do driver)
+            sb.AppendLine("MEPO - GUIA DE SEPARACAO");
+            sb.AppendLine(new string('=', 32));
+            sb.AppendLine($"PEDIDO: {payload.Numero}");
+            sb.AppendLine($"ORIGEM: {payload.Origem}");
+            if (!string.IsNullOrWhiteSpace(payload.ClienteNome)) sb.AppendLine($"CLIENTE: {Cut(payload.ClienteNome, 28)}");
             if (payload.IsSemNf == true) sb.AppendLine("*** PEDIDO SEM NF ***");
-            if (!string.IsNullOrWhiteSpace(payload.ObservacaoExpedicao)) sb.AppendLine(payload.ObservacaoExpedicao);
+            if (!string.IsNullOrWhiteSpace(payload.ObservacaoExpedicao))
+            {
+                sb.AppendLine(new string('-', 32));
+                sb.AppendLine(Cut(payload.ObservacaoExpedicao, 96));
+            }
+
+            sb.AppendLine(new string('-', 32));
+            sb.AppendLine($"{PadRight("SKU", 12)} {PadLeft("QTD", 4)} {PadRight("DESC", 13)}");
             sb.AppendLine(new string('-', 32));
 
             if (payload.Itens.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
                 foreach (var it in payload.Itens.EnumerateArray())
                 {
-                    var sku = it.TryGetProperty("sku", out var s) ? s.GetString() : "";
-                    var desc = it.TryGetProperty("descricao", out var d) ? d.GetString() : "";
+                    var sku = it.TryGetProperty("sku", out var s) ? (s.GetString() ?? "") : "";
+                    var desc = it.TryGetProperty("descricao", out var d) ? (d.GetString() ?? "") : "";
                     var qtd = it.TryGetProperty("quantidade", out var q) ? q.ToString() : "";
-                    sb.AppendLine($"{sku}  {qtd}  {desc}");
+
+                    sb.AppendLine($"{PadRight(Cut(sku, 12), 12)} {PadLeft(Cut(qtd, 4), 4)} {PadRight(Cut(desc, 13), 13)}");
                 }
             }
+
+            sb.AppendLine(new string('-', 32));
+            sb.AppendLine("INICIO: ____/____ ____:____");
+            sb.AppendLine("FIM:    ____/____ ____:____");
+            sb.AppendLine("RFID:   OK ( )  DIVERG ( )");
+            sb.AppendLine(new string('=', 32));
 
             return sb.ToString();
         }

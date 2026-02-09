@@ -25,10 +25,23 @@ public partial class FilaViewModel : ObservableObject
     public ObservableCollection<FilaItem> EmSeparacao => _fila.EmSeparacao;
     public ObservableCollection<FilaItem> Finalizados => _fila.Finalizados;
 
+    // Views para filtros/ordenação no XAML
+    public System.ComponentModel.ICollectionView PendentesView { get; }
+    public System.ComponentModel.ICollectionView EmSeparacaoView { get; }
+    public System.ComponentModel.ICollectionView FinalizadosView { get; }
+
+    public ObservableCollection<string> OrigensFiltro { get; } = new() { "(todas)", "OMIE", "CONTAAZUL", "LEXOS", "MANUAL" };
+
     [ObservableProperty] private FilaItem? selected;
+
+    [ObservableProperty] private string filtroTexto = "";
+    [ObservableProperty] private string filtroOrigem = "(todas)";
+    [ObservableProperty] private bool ordenarPorPrioridade = true;
 
     public IAsyncRelayCommand Refresh { get; }
     public IAsyncRelayCommand AbrirPedido { get; }
+    public IAsyncRelayCommand<FilaItem?> AbrirItem { get; }
+    public IAsyncRelayCommand<FilaItem?> ReimprimirItem { get; }
 
     public FilaViewModel(FilaService fila, RealtimeService realtime, NavigationViewModel nav, SaidaViewModel saida, PrintService printer, AppLogger log)
     {
@@ -39,10 +52,21 @@ public partial class FilaViewModel : ObservableObject
         _printer = printer;
         _log = log;
 
+        // CollectionViews (filtro + ordenação)
+        PendentesView = System.Windows.Data.CollectionViewSource.GetDefaultView(Pendentes);
+        EmSeparacaoView = System.Windows.Data.CollectionViewSource.GetDefaultView(EmSeparacao);
+        FinalizadosView = System.Windows.Data.CollectionViewSource.GetDefaultView(Finalizados);
+
+        PendentesView.Filter = FilterItem;
+        EmSeparacaoView.Filter = FilterItem;
+        FinalizadosView.Filter = FilterItem;
+
         Refresh = new AsyncRelayCommand(async () => 
         {
             _log.Info("🔄 Atualizando fila...");
             await _fila.RefreshAsync();
+            ApplySort();
+            RefreshViews();
             _log.Info("✅ Fila atualizada");
 
             // Estratégia mais confiável que depender do postgres_changes:
@@ -75,6 +99,50 @@ public partial class FilaViewModel : ObservableObject
                     _log.Warn($"[AUTO-PRINT] Falha ao auto-imprimir via refresh: {ex.Message}");
                 }
             });
+        });
+
+        // Ações rápidas
+        AbrirItem = new AsyncRelayCommand<FilaItem?>(async (param) =>
+        {
+            var item = param ?? Selected;
+            if (item is null)
+            {
+                _log.Warn("Nenhum pedido selecionado");
+                return;
+            }
+
+            Selected = item;
+            await AbrirPedido.ExecuteAsync(null);
+        });
+
+        ReimprimirItem = new AsyncRelayCommand<FilaItem?>(async (param) =>
+        {
+            var item = param ?? Selected;
+            if (item is null)
+            {
+                _log.Warn("Nenhum pedido selecionado");
+                return;
+            }
+
+            if (item.Id == Guid.Empty)
+            {
+                _log.Warn("Pedido sem documento_id para impressão");
+                return;
+            }
+
+            try
+            {
+                _log.Info($"[REPRINT] Reimprimindo doc_id={item.Id} origem={item.Origem} numero={item.NumeroPedido}...");
+                var printText = await _fila.BuildPrintTextAsync(item.Id).ConfigureAwait(true);
+                if (!string.IsNullOrWhiteSpace(printText))
+                    _printer.PrintText(printText);
+                else
+                    _log.Warn($"[REPRINT] Texto de impressão vazio para doc_id={item.Id}");
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"[REPRINT] Falha ao reimprimir: {ex.Message}");
+            }
         });
 
         AbrirPedido = new AsyncRelayCommand(async () =>
@@ -166,6 +234,75 @@ public partial class FilaViewModel : ObservableObject
         };
 
         // Initial load
+        ApplySort();
+        RefreshViews();
         _ = Refresh.ExecuteAsync(null);
+    }
+
+    private bool FilterItem(object obj)
+    {
+        if (obj is not FilaItem it) return false;
+
+        // Origem
+        var origem = (it.Origem ?? "").Trim().ToUpperInvariant();
+        var fOrig = (FiltroOrigem ?? "(todas)").Trim().ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(fOrig) && fOrig != "(TODAS)" && origem != fOrig)
+            return false;
+
+        // Texto (numero / cliente)
+        var ft = (FiltroTexto ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(ft))
+        {
+            var num = it.NumeroPedido ?? "";
+            var cli = it.Cliente ?? "";
+            if (!num.Contains(ft, StringComparison.OrdinalIgnoreCase) && !cli.Contains(ft, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        return true;
+    }
+
+    partial void OnFiltroTextoChanged(string value) => RefreshViews();
+    partial void OnFiltroOrigemChanged(string value) => RefreshViews();
+    partial void OnOrdenarPorPrioridadeChanged(bool value) { ApplySort(); RefreshViews(); }
+
+    private void RefreshViews()
+    {
+        try
+        {
+            PendentesView.Refresh();
+            EmSeparacaoView.Refresh();
+            FinalizadosView.Refresh();
+        }
+        catch { }
+    }
+
+    private void ApplySort()
+    {
+        try
+        {
+            PendentesView.SortDescriptions.Clear();
+            EmSeparacaoView.SortDescriptions.Clear();
+            FinalizadosView.SortDescriptions.Clear();
+
+            if (OrdenarPorPrioridade)
+            {
+                // Pendentes: prioridade desc, criado asc
+                PendentesView.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(FilaItem.Prioridade), System.ComponentModel.ListSortDirection.Descending));
+                PendentesView.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(FilaItem.CriadoEm), System.ComponentModel.ListSortDirection.Ascending));
+            }
+            else
+            {
+                // Pendentes: FIFO
+                PendentesView.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(FilaItem.CriadoEm), System.ComponentModel.ListSortDirection.Ascending));
+            }
+
+            // Em separação: iniciado asc (o mais antigo primeiro)
+            EmSeparacaoView.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(FilaItem.IniciadoEm), System.ComponentModel.ListSortDirection.Ascending));
+
+            // Finalizados: mais recente primeiro
+            FinalizadosView.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(FilaItem.FinalizadoEm), System.ComponentModel.ListSortDirection.Descending));
+        }
+        catch { }
     }
 }

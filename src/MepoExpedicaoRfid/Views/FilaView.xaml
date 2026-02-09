@@ -28,11 +28,27 @@
       <TextBlock Text="{Binding Pendentes.Count, StringFormat=Pendentes ({0})}" FontWeight="SemiBold" DockPanel.Dock="Left"/>
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
         <Button Content="Atualizar" Command="{Binding Refresh}" Padding="8,4" Margin="0,0,8,0"/>
-        <Button Content="Abrir" Command="{Binding AbrirPedido}" Padding="8,4"/>
+        <Button Content="Abrir" Command="{Binding AbrirItem}" Padding="8,4"/>
       </StackPanel>
     </DockPanel>
 
-    <ListBox ItemsSource="{Binding Pendentes}"
+    <!-- Filtros/Ordenação -->
+    <Grid Margin="0,0,0,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="140"/>
+        <ColumnDefinition Width="140"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBox Grid.Column="0" Text="{Binding FiltroTexto, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,0,10,0" 
+               ToolTip="Filtrar por número do pedido ou cliente"/>
+
+      <ComboBox Grid.Column="1" ItemsSource="{Binding OrigensFiltro}" SelectedItem="{Binding FiltroOrigem}" Height="30" Margin="0,0,10,0"/>
+
+      <CheckBox Grid.Column="2" Content="Prioridade" IsChecked="{Binding OrdenarPorPrioridade}" VerticalAlignment="Center"/>
+    </Grid>
+
+    <ListBox ItemsSource="{Binding PendentesView}"
              SelectedItem="{Binding Selected, Mode=TwoWay}"
              BorderThickness="0"
              Background="Transparent"
@@ -105,9 +121,19 @@
 
                 <DockPanel Grid.Row="0">
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
-                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
-                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
-                  </Border>
+
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Reimprimir" Padding="8,2" Margin="0,0,6,0"
+                            Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                            CommandParameter="{Binding}"/>
+                    <Button Content="Abrir" Padding="8,2" Margin="0,0,6,0"
+                            Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                            CommandParameter="{Binding}"/>
+
+                    <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
+                      <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                    </Border>
+                  </StackPanel>
                 </DockPanel>
 
                 <TextBlock Grid.Row="1" Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
@@ -134,7 +160,7 @@
   <StackPanel Grid.Column="1" Margin="12,0,12,0">
     <TextBlock Text="{Binding EmSeparacao.Count, StringFormat=Em separação ({0})}" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-    <ItemsControl ItemsSource="{Binding EmSeparacao}">
+    <ItemsControl ItemsSource="{Binding EmSeparacaoView}">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
           <Border Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,10">
@@ -149,9 +175,19 @@
               <Grid Grid.Column="1" Margin="14,12">
                 <DockPanel>
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
-                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
-                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
-                  </Border>
+
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Reimprimir" Padding="8,2" Margin="0,0,6,0"
+                            Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"/>
+                    <Button Content="Abrir" Padding="8,2" Margin="0,0,6,0"
+                            Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"/>
+
+                    <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
+                      <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                    </Border>
+                  </StackPanel>
                 </DockPanel>
 
                 <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
@@ -173,7 +209,7 @@
   <StackPanel Grid.Column="2">
     <TextBlock Text="{Binding Finalizados.Count, StringFormat=Finalizados ({0})}" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-    <ItemsControl ItemsSource="{Binding Finalizados}">
+    <ItemsControl ItemsSource="{Binding FinalizadosView}">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
           <Border Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,10">
@@ -188,9 +224,16 @@
               <Grid Grid.Column="1" Margin="14,12">
                 <DockPanel>
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
-                  <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="8,0,0,0">
-                    <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
-                  </Border>
+
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Reimprimir" Padding="8,2" Margin="0,0,6,0"
+                            Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"/>
+
+                    <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
+                      <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
+                    </Border>
+                  </StackPanel>
                 </DockPanel>
 
                 <TextBlock Text="{Binding Cliente}" Opacity="0.8" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
