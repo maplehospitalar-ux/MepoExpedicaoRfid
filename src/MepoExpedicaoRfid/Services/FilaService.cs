@@ -135,14 +135,27 @@ public sealed class FilaService
 
         foreach (var r in rows)
         {
-            var st = (r.Status ?? "").ToLowerInvariant();
+            var st = (r.Status ?? "").Trim().ToLowerInvariant();
 
+            // Regra prática (mais fiel ao chão de fábrica):
+            // - finalizada => Finalizados
+            // - se existe sessão ativa (SessionId) OU status processando/em_separacao => Em separação
+            // - caso contrário => Pendentes
             if (st is "finalizada" or "finalizado")
+            {
                 Finalizados.Add(r);
-            else if (st is "processando" or "separacao" or "em_separacao")
+                continue;
+            }
+
+            var hasSession = !string.IsNullOrWhiteSpace(r.SessionId);
+            if (hasSession || st is "processando" or "em_separacao" or "em separacao" or "separacao")
+            {
                 EmSeparacao.Add(r);
-            else
-                Pendentes.Add(r);
+                continue;
+            }
+
+            // 'na_fila' / 'preparando' e qualquer outro vira pendente
+            Pendentes.Add(r);
         }
     }
 
