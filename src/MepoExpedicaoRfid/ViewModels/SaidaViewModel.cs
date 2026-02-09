@@ -331,12 +331,26 @@ public partial class SaidaViewModel : ObservableObject
         ItensResumo.Clear();
         try
         {
-            var itens = await _supabase.GetDocumentoItensResumoAsync(item.Id).ConfigureAwait(true);
+            // Em alguns cenários (ex.: itens vindos do UNION de sessões), o Id pode não ser o documento_id.
+            // Tentamos primeiro com item.Id; se vier vazio, resolvemos pelo par (origem, numero_pedido).
+            var docId = item.Id;
+            var itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
+
+            if (itens.Count == 0)
+            {
+                var resolvedDocId = await _supabase.GetDocumentoIdByOrigemNumeroPedidoAsync(origem, PedidoNumero).ConfigureAwait(true);
+                if (resolvedDocId.HasValue)
+                {
+                    docId = resolvedDocId.Value;
+                    itens = await _supabase.GetDocumentoItensResumoAsync(docId).ConfigureAwait(true);
+                }
+            }
+
             foreach (var it in itens) ItensResumo.Add(it);
         }
         catch (Exception ex)
         {
-            _log.Warn($"Não consegui carregar itens do pedido (documento_id={item.Id}): {ex.Message}");
+            _log.Warn($"Não consegui carregar itens do pedido: {ex.Message}");
         }
 
         // Cria sessão agora (B: ao abrir)

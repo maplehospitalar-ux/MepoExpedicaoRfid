@@ -142,8 +142,31 @@ public sealed class SupabaseService
         }
     }
 
-    public async Task<IReadOnlyList<DocumentoItemResumo>> GetDocumentoItensResumoAsync(Guid documentoId)
+    public async Task<Guid?> GetDocumentoIdByOrigemNumeroPedidoAsync(string origem, string numeroPedido)
     {
+        await EnsureConnectedAsync();
+        if (string.IsNullOrWhiteSpace(origem) || string.IsNullOrWhiteSpace(numeroPedido)) return null;
+
+        // documentos_comerciais: buscar id pelo par (origem, numero_pedido)
+        var select = "id";
+        var path = $"/rest/v1/documentos_comerciais?select={Uri.EscapeDataString(select)}&origem=eq.{Uri.EscapeDataString(origem.Trim().ToUpperInvariant())}&numero_pedido=eq.{Uri.EscapeDataString(numeroPedido.Trim())}&limit=1";
+        using var req = NewAuthedRequest(HttpMethod.Get, path);
+        using var resp = await _http.SendAsync(req);
+        var body = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode) return null;
+
+        using var doc = JsonDocument.Parse(body);
+        var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+        if (first.ValueKind == JsonValueKind.Undefined) return null;
+
+        if (first.TryGetProperty("id", out var idProp) && Guid.TryParse(idProp.ToString(), out var guid))
+            return guid;
+
+        return null;
+    }
+
+    public async Task<IReadOnlyList<DocumentoItemResumo>> GetDocumentoItensResumoAsync(Guid documentoId)
+    { 
         await EnsureConnectedAsync();
         var select = "sku,descricao,quantidade,preco_unitario,valor_total";
         var path = $"/rest/v1/documentos_comerciais_itens?select={Uri.EscapeDataString(select)}&documento_id=eq.{Uri.EscapeDataString(documentoId.ToString())}&order=sku.asc";

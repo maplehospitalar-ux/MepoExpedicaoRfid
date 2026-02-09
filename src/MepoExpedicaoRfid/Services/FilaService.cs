@@ -25,7 +25,24 @@ public sealed class FilaService
     public async Task RefreshAsync()
     {
         var rows = await _supabase.GetFilaAsync(new[] { "na_fila", "preparando", "processando", "finalizada" }, 300);
-        Apply(rows);
+
+        // Dedupe: a view pode retornar o mesmo pedido 2x (ex.: documento + sessão ativa via UNION ALL).
+        // Mantém o mais útil para o operador:
+        // 1) preferir linha com SessionId preenchido
+        // 2) senão, a mais recente por IniciadoEm/CriadoEm
+        var deduped = rows
+            .GroupBy(r => $"{(r.Origem ?? "").Trim().ToUpperInvariant()}|{(r.NumeroPedido ?? "").Trim()}" )
+            .Select(g =>
+            {
+                var withSession = g.Where(x => !string.IsNullOrWhiteSpace(x.SessionId)).ToList();
+                if (withSession.Count > 0)
+                    return withSession.OrderByDescending(x => x.IniciadoEm ?? x.CriadoEm).First();
+
+                return g.OrderByDescending(x => x.IniciadoEm ?? x.CriadoEm).First();
+            })
+            .ToList();
+
+        Apply(deduped);
     }
 
     private void Apply(IReadOnlyList<FilaItem> rows)

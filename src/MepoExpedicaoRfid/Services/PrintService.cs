@@ -21,6 +21,25 @@ public sealed class PrintService
         if (string.IsNullOrWhiteSpace(text)) return;
 
         using var doc = new PrintDocument();
+
+        // Se não informarem printerName, tenta achar automaticamente a Elgin i9.
+        if (string.IsNullOrWhiteSpace(printerName))
+        {
+            try
+            {
+                foreach (var p in PrinterSettings.InstalledPrinters)
+                {
+                    var name = p?.ToString() ?? "";
+                    if (name.Contains("ELGIN", StringComparison.OrdinalIgnoreCase) && name.Contains("i9", StringComparison.OrdinalIgnoreCase))
+                    {
+                        printerName = name;
+                        break;
+                    }
+                }
+            }
+            catch { }
+        }
+
         if (!string.IsNullOrWhiteSpace(printerName))
             doc.PrinterSettings.PrinterName = printerName;
 

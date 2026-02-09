@@ -101,6 +101,18 @@
         <TextBlock Text="{Binding OrigemSelecionada, StringFormat=Origem: {0}}" Opacity="0.75"/>
         <TextBlock Text="{Binding ClienteNome, StringFormat=Cliente: {0}}" Opacity="0.75" Margin="0,0,0,10"/>
 
+        <TextBlock Text="Itens esperados do pedido" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <DataGrid ItemsSource="{Binding ItensResumo}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Height="220">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="SKU" Binding="{Binding Sku}" Width="140"/>
+            <DataGridTextColumn Header="Descrição" Binding="{Binding Descricao}" Width="*"/>
+            <DataGridTextColumn Header="Qtd" Binding="{Binding Quantidade}" Width="80"/>
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <Separator Margin="0,12,0,12"/>
+
+        <TextBlock Text="Lido (SKU/Descrição/Lote)" FontWeight="SemiBold" Margin="0,0,0,6"/>
         <DataGrid ItemsSource="{Binding ResumoAtual}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
           <DataGrid.Columns>
             <DataGridTextColumn Header="SKU" Binding="{Binding Sku}" Width="140"/>
