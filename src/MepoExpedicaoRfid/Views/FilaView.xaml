@@ -123,12 +123,20 @@
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
 
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Reimprimir" Padding="8,2" Margin="0,0,6,0"
-                            Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                            CommandParameter="{Binding}"/>
-                    <Button Content="Abrir" Padding="8,2" Margin="0,0,6,0"
-                            Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                            CommandParameter="{Binding}"/>
+                    <!-- Menu compacto (não polui o card) -->
+                    <Button Content="⋯" Padding="6,0" Margin="0,0,6,0" MinWidth="26" Height="22" VerticalAlignment="Center"
+                            Background="#F1F5F9" BorderBrush="#E2E8F0" Foreground="#334155">
+                      <Button.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="Abrir" 
+                                    Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    CommandParameter="{Binding}"/>
+                          <MenuItem Header="Reimprimir" 
+                                    Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    CommandParameter="{Binding}"/>
+                        </ContextMenu>
+                      </Button.ContextMenu>
+                    </Button>
 
                     <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
                       <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
@@ -177,12 +185,20 @@
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
 
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Reimprimir" Padding="8,2" Margin="0,0,6,0"
-                            Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}"/>
-                    <Button Content="Abrir" Padding="8,2" Margin="0,0,6,0"
-                            Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}"/>
+                    <!-- Menu compacto (não polui o card) -->
+                    <Button Content="⋯" Padding="6,0" Margin="0,0,6,0" MinWidth="26" Height="22" VerticalAlignment="Center"
+                            Background="#F1F5F9" BorderBrush="#E2E8F0" Foreground="#334155">
+                      <Button.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="Abrir" 
+                                    Command="{Binding DataContext.AbrirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                          <MenuItem Header="Reimprimir" 
+                                    Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                        </ContextMenu>
+                      </Button.ContextMenu>
+                    </Button>
 
                     <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
                       <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
@@ -226,9 +242,17 @@
                   <TextBlock Text="{Binding NumeroPedido}" FontSize="18" FontWeight="SemiBold" DockPanel.Dock="Left"/>
 
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Reimprimir" Padding="8,2" Margin="0,0,6,0"
-                            Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}"/>
+                    <!-- Menu compacto (não polui o card) -->
+                    <Button Content="⋯" Padding="6,0" Margin="0,0,6,0" MinWidth="26" Height="22" VerticalAlignment="Center"
+                            Background="#F1F5F9" BorderBrush="#E2E8F0" Foreground="#334155">
+                      <Button.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="Reimprimir" 
+                                    Command="{Binding DataContext.ReimprimirItem, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                        </ContextMenu>
+                      </Button.ContextMenu>
+                    </Button>
 
                     <Border Background="#F1F5F9" CornerRadius="999" Padding="8,2" Margin="0,0,0,0">
                       <TextBlock Text="{Binding Origem}" FontSize="12" Opacity="0.8"/>
