@@ -29,7 +29,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x86 x64
-ArchitecturesInstallIn64BitMode=no
+; Forçamos instalação 32-bit (PF32) mesmo em Windows 64-bit.
+; (Não usar ArchitecturesInstallIn64BitMode aqui)
 
 ; Requer admin para instalar em Program Files
 PrivilegesRequired=admin
