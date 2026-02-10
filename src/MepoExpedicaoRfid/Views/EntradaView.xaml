@@ -128,6 +128,13 @@
           </StackPanel>
         </Border>
         
+        <Button Content="➕ Criar Sessão" 
+                Command="{Binding CriarSessao}" 
+                Padding="16,8" 
+                Margin="0,0,0,8"
+                Background="#4299E1"
+                Foreground="White"
+                FontWeight="SemiBold"/>
         <Button Content="▶ Iniciar Leitura" 
                 Command="{Binding IniciarLeitura}" 
                 Padding="16,8" 

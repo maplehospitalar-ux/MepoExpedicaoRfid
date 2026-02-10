@@ -414,6 +414,32 @@ public sealed class SupabaseService
         return null;
     }
 
+    public async Task<string?> BuscarDescricaoProdutoAsync(string sku, CancellationToken ct = default)
+    {
+        await EnsureConnectedAsync();
+        if (string.IsNullOrWhiteSpace(sku)) return null;
+
+        try
+        {
+            var norm = sku.Trim();
+            var path = $"/rest/v1/produtos?select=descricao&sku=eq.{Uri.EscapeDataString(norm)}&limit=1";
+            using var req = NewAuthedRequest(HttpMethod.Get, path);
+            using var resp = await _http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(body);
+            var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+            if (first.ValueKind == JsonValueKind.Undefined) return null;
+            return first.TryGetProperty("descricao", out var d) ? d.GetString() : null;
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Falha ao buscar descrição do SKU '{sku}': {ex.Message}");
+            return null;
+        }
+    }
+
     public async Task<bool> FinalizarSessaoAsync(string sessionId, string userId)
     {
         await EnsureConnectedAsync();

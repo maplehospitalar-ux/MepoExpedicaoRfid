@@ -16,6 +16,7 @@ public partial class EntradaViewModel : ObservableObject
     private readonly RealtimeService _realtime;
     private readonly AppLogger _log;
     private bool _busyReading = false;  // Previne múltiplas leituras simultâneas
+    private CancellationTokenSource? _skuLookupCts;
 
     [ObservableProperty] private string sku = "";
     [ObservableProperty] private string descricao = "";
@@ -29,6 +30,7 @@ public partial class EntradaViewModel : ObservableObject
 
     public ObservableCollection<string> Recent { get; } = new();
 
+    public IAsyncRelayCommand CriarSessao { get; }
     public IAsyncRelayCommand IniciarLeitura { get; }
     public IAsyncRelayCommand PararLeitura { get; }
     public IAsyncRelayCommand FinalizarEntrada { get; }
@@ -47,18 +49,11 @@ public partial class EntradaViewModel : ObservableObject
 
         _pipeline.SnapshotUpdated += (_, __) => RefreshSnapshot();
 
-        IniciarLeitura = new AsyncRelayCommand(async () =>
+        CriarSessao = new AsyncRelayCommand(async () =>
         {
-            // Previne múltiplas leituras simultâneas
-            if (_busyReading || IsReading)
-            {
-                _log.Warn("⚠️ Leitura já em andamento. Aguarde...");
-                return;
-            }
-
             if (string.IsNullOrWhiteSpace(Sku) || string.IsNullOrWhiteSpace(Lote))
             {
-                _log.Warn("SKU e Lote são obrigatórios para iniciar entrada");
+                _log.Warn("SKU e Lote são obrigatórios para criar sessão de entrada");
                 return;
             }
 
@@ -70,66 +65,94 @@ public partial class EntradaViewModel : ObservableObject
                 return;
             }
 
-            // ✅ CRÍTICO: Executa TUDO em background para não travar UI
+            if (!string.IsNullOrWhiteSpace(SessionId))
+            {
+                _log.Warn($"Já existe uma sessão de entrada ativa: {SessionId}");
+                return;
+            }
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    if (string.IsNullOrWhiteSpace(SessionId))
+                    _log.Info("Criando sessão de entrada...");
+                    var result = await _supabase.CriarSessaoEntradaAsync(Sku, Lote, DataFabricacao, DataValidade);
+                    if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
                     {
-                        _log.Info("Criando sessão de entrada...");
-                        var result = await _supabase.CriarSessaoEntradaAsync(Sku, Lote, DataFabricacao, DataValidade);
-                        if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
-                        {
-                            _log.Warn($"Falha ao criar sessão de entrada: {result.ErrorMessage ?? result.Message}");
-                            return;
-                        }
-
-                        // Atualiza propriedades na UI thread
-                        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                        {
-                            SessionId = result.SessionId;
-                            EntradaId = result.EntradaId ?? "";
-                        });
-
-                        _session.StartSession(new SessionInfo
-                        {
-                            SessionId = result.SessionId,
-                            Tipo = SessionType.Entrada,
-                            Sku = Sku,
-                            Lote = Lote,
-                            EntradaId = result.EntradaId ?? "",
-                            DataFabricacao = DataFabricacao,
-                            DataValidade = DataValidade,
-                            ReaderId = _cfg.Device.Id,
-                            ClientType = _cfg.Device.ClientType
-                        });
-
-                        _pipeline.ResetSessionCounters();
-                        await _realtime.BroadcastReaderStartAsync(result.SessionId);
-                        _log.Info($"Sessão de entrada ativa: {result.SessionId}");
+                        _log.Warn($"Falha ao criar sessão de entrada: {result.ErrorMessage ?? result.Message}");
+                        return;
                     }
 
-                    // Define flags
-                    _busyReading = true;
                     await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        IsReading = true;
+                        SessionId = result.SessionId;
+                        EntradaId = result.EntradaId ?? "";
                     });
-                    
-                    _log.Info("⏳ Iniciando leitura de entrada...");
-                    
+
+                    _session.StartSession(new SessionInfo
+                    {
+                        SessionId = result.SessionId,
+                        Tipo = SessionType.Entrada,
+                        Sku = Sku,
+                        Lote = Lote,
+                        EntradaId = result.EntradaId ?? "",
+                        DataFabricacao = DataFabricacao,
+                        DataValidade = DataValidade,
+                        ReaderId = _cfg.Device.Id,
+                        ClientType = _cfg.Device.ClientType
+                    });
+
+                    _pipeline.ResetSessionCounters();
+                    _log.Info($"Sessão de entrada ativa: {result.SessionId}");
+                }
+                catch (Exception ex)
+                {
+                    _log.Error($"❌ Erro ao criar sessão: {ex.Message}", ex);
+                }
+            });
+        });
+
+        IniciarLeitura = new AsyncRelayCommand(async () =>
+        {
+            // Previne múltiplas leituras simultâneas
+            if (_busyReading || IsReading)
+            {
+                _log.Warn("⚠️ Leitura já em andamento. Aguarde...");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SessionId))
+            {
+                _log.Warn("Nenhuma sessão de entrada ativa. Clique em 'Criar Sessão' primeiro.");
+                return;
+            }
+
+            _busyReading = true;
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                IsReading = true;
+            });
+
+            try
+            {
+                await _realtime.BroadcastReaderStartAsync(SessionId);
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Falha ao enviar reader_start: {ex.Message}");
+            }
+
+            _log.Info("⏳ Iniciando leitura de entrada...");
+            _ = Task.Run(async () =>
+            {
+                try
+                {
                     await _pipeline.BeginReadingAsync();
                     _log.Info("✅ Leitura de entrada ativa - tags aparecerão automaticamente");
                 }
                 catch (Exception ex)
                 {
                     _log.Error($"❌ Erro ao iniciar leitura: {ex.Message}", ex);
-                    _busyReading = false;
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        IsReading = false;
-                    });
                 }
             });
         });
@@ -170,6 +193,10 @@ public partial class EntradaViewModel : ObservableObject
             }
 
             await _pipeline.EndReadingAsync();
+            var skuFinal = Sku;
+            var loteFinal = Lote;
+            var totalFinal = TotalTags;
+
             if (!string.IsNullOrWhiteSpace(SessionId))
             {
                 await _realtime.BroadcastReaderStopAsync(SessionId);
@@ -177,7 +204,18 @@ public partial class EntradaViewModel : ObservableObject
                 _session.EndSession();
             }
 
-            _log.Info($"✅ Entrada finalizada: {TotalTags} tags - SKU: {Sku}, Lote: {Lote}");
+            _log.Info($"✅ Entrada finalizada: {totalFinal} tags - SKU: {skuFinal}, Lote: {loteFinal}");
+
+            // Confirmação para o operador
+            try
+            {
+                System.Windows.MessageBox.Show(
+                    $"Entrada finalizada com sucesso.\n\nSKU: {skuFinal}\nLote: {loteFinal}\nQuantidade (tags únicas): {totalFinal}",
+                    "Finalizar entrada",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+            catch { }
             
             // Limpa flags
             _busyReading = false;
@@ -257,6 +295,43 @@ public partial class EntradaViewModel : ObservableObject
         };
 
         RefreshSnapshot();
+    }
+
+    partial void OnSkuChanged(string value)
+    {
+        // UI: ao digitar SKU, buscar descrição no MEPO e preencher automaticamente.
+        // Debounce simples para não disparar request a cada tecla.
+        try { _skuLookupCts?.Cancel(); } catch { }
+        _skuLookupCts = new CancellationTokenSource();
+        var ct = _skuLookupCts.Token;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            Descricao = "";
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(250, ct);
+                var desc = await _supabase.BuscarDescricaoProdutoAsync(value, ct);
+                if (ct.IsCancellationRequested) return;
+
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    Descricao = string.IsNullOrWhiteSpace(desc)
+                        ? "SKU não encontrado no MEPO (verifique o código)"
+                        : desc;
+                });
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                _log.Warn($"Falha ao buscar descrição do SKU: {ex.Message}");
+            }
+        }, ct);
     }
 
     private void RefreshSnapshot()
