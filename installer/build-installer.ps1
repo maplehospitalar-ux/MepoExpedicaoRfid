@@ -22,6 +22,11 @@ if (-not (Test-Path $defaultISCC)) {
 Write-Host "==> Build installer (.exe)"
 Push-Location $installerDir
 & $defaultISCC $iss
+$code = $LASTEXITCODE
 Pop-Location
+
+if ($code -ne 0) {
+  throw "Falha ao compilar o instalador (ISCC exit code=$code). Veja o log acima."
+}
 
 Write-Host "OK: instalador gerado em $installerDir\dist\MepoExpedicaoRfid-Setup.exe"

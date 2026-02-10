@@ -59,17 +59,6 @@ Filename: "{app}\\{#MyAppExeName}"; Description: "Abrir {#MyAppName}"; Flags: no
 ; opcional: se quiser remover logs locais, descomente
 ; Type: filesandordirs; Name: "{app}\\logs"
 
-[Code]
-function DirExists(DirName: string): Boolean;
-begin
-  Result := (DirName <> '') and (GetFileAttributes(DirName) <> $FFFFFFFF) and ((GetFileAttributes(DirName) and FILE_ATTRIBUTE_DIRECTORY) <> 0);
-end;
-
-procedure InitializeWizard;
-begin
-  if not DirExists(ExpandConstant('{#PublishDir}')) then begin
-    MsgBox('Pasta publish não encontrada: ' + ExpandConstant('{#PublishDir}') + #13#10 +
-      'Execute primeiro o dotnet publish (Release, win-x86) e tente novamente.', mbCriticalError, MB_OK);
-    WizardForm.Close;
-  end;
-end;
+; [Code]
+; Removido: checagem customizada do PublishDir.
+; (Inno Setup já possui DirExists, mas o pré-check não é essencial e evitamos incompatibilidades)
