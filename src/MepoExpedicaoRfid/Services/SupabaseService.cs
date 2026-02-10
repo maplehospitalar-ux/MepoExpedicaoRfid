@@ -19,11 +19,13 @@ public sealed class SupabaseService
 
     private readonly HttpClient _http = new();
     private string? _accessToken;
+    private string? _authUserId;
 
     public bool IsConnected => !string.IsNullOrWhiteSpace(_accessToken);
     public string BaseUrl => _cfg.Url;
     public string AnonKey => _cfg.AnonKey;
     public string? AccessToken => _accessToken;
+    public string? AuthUserId => _authUserId;
 
     public SupabaseService(SupabaseConfig cfg, AuthConfig auth, DeviceConfig device, AppLogger log)
     {
@@ -59,7 +61,39 @@ public sealed class SupabaseService
         if (string.IsNullOrWhiteSpace(_accessToken))
             throw new InvalidOperationException("Supabase não retornou access_token.");
 
-        _log.Info("✅ Supabase autenticado.");
+        // Tenta descobrir o UUID do usuário autenticado (necessário para alguns RPCs que exigem uuid)
+        try
+        {
+            _authUserId = await FetchAuthUserIdAsync();
+            if (!string.IsNullOrWhiteSpace(_authUserId))
+                _log.Info($"✅ Supabase autenticado. user_id={_authUserId}");
+            else
+                _log.Info("✅ Supabase autenticado.");
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"Supabase autenticado, mas falhei ao obter user_id: {ex.Message}");
+        }
+    }
+
+    private async Task<string?> FetchAuthUserIdAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_accessToken)) return null;
+
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"{_cfg.Url}/auth/v1/user");
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        req.Headers.Add("apikey", _cfg.AnonKey);
+
+        using var resp = await _http.SendAsync(req);
+        var body = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Auth user failed: {resp.StatusCode} {body}");
+
+        using var doc = JsonDocument.Parse(body);
+        if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("id", out var id))
+            return id.GetString();
+
+        return null;
     }
 
     private async Task EnsureConnectedAsync()
@@ -367,12 +401,33 @@ public sealed class SupabaseService
         return body.Trim('"');
     }
 
+    private string? ResolveUserIdUuid(string? userIdCandidate)
+    {
+        // Alguns RPCs esperam UUID (auth.users.id). No Desktop, o caller às vezes passa device_id (ex: r3-desktop-02).
+        // Aqui garantimos um UUID válido.
+        if (!string.IsNullOrWhiteSpace(userIdCandidate) && Guid.TryParse(userIdCandidate, out _))
+            return userIdCandidate;
+
+        if (!string.IsNullOrWhiteSpace(_authUserId) && Guid.TryParse(_authUserId, out _))
+            return _authUserId;
+
+        return null;
+    }
+
     public async Task<bool> FinalizarSessaoAsync(string sessionId, string userId)
     {
         await EnsureConnectedAsync();
         var rpc = "/rest/v1/rpc/finalizar_sessao_rfid";
+
+        var uid = ResolveUserIdUuid(userId);
+        if (string.IsNullOrWhiteSpace(uid))
+        {
+            _log.Warn("RPC finalizar_sessao_rfid: não tenho um user_id UUID válido (auth).");
+            return false;
+        }
+
         using var req = NewAuthedRequest(HttpMethod.Post, rpc);
-        req.Content = new StringContent(JsonSerializer.Serialize(new { p_session_id = sessionId, p_user_id = userId }),
+        req.Content = new StringContent(JsonSerializer.Serialize(new { p_session_id = sessionId, p_user_id = uid }),
             Encoding.UTF8, "application/json");
         using var resp = await _http.SendAsync(req);
         if (!resp.IsSuccessStatusCode)
@@ -388,8 +443,16 @@ public sealed class SupabaseService
     {
         await EnsureConnectedAsync();
         var rpc = "/rest/v1/rpc/cancelar_sessao_rfid";
+
+        var uid = ResolveUserIdUuid(userId);
+        if (string.IsNullOrWhiteSpace(uid))
+        {
+            _log.Warn("RPC cancelar_sessao_rfid: não tenho um user_id UUID válido (auth).");
+            return false;
+        }
+
         using var req = NewAuthedRequest(HttpMethod.Post, rpc);
-        req.Content = new StringContent(JsonSerializer.Serialize(new { p_session_id = sessionId, p_user_id = userId }),
+        req.Content = new StringContent(JsonSerializer.Serialize(new { p_session_id = sessionId, p_user_id = uid }),
             Encoding.UTF8, "application/json");
         using var resp = await _http.SendAsync(req);
         if (!resp.IsSuccessStatusCode)

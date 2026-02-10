@@ -276,15 +276,16 @@ public partial class SaidaViewModel : ObservableObject
 
             // IMPORTANTE:
             // Cancelar a sessão RFID NÃO deve cancelar/remover o pedido da fila.
-            // Aqui usamos o RPC cancelar_sessao_rfid (sessão) para manter o pedido como pendente.
+            // Padronizamos com o fluxo da ENTRADA: usa Edge Function (rfid-session-manager).
+            // Isso evita divergências de permissão/RLS e o problema clássico do p_user_id (UUID) no RPC.
             var ok = false;
             try
             {
-                ok = await _supabase.CancelarSessaoAsync(sid, _cfg.Device.Id).ConfigureAwait(true);
+                ok = await _supabase.CancelarSessaoEdgeAsync(sid, "Cancelado pelo operador").ConfigureAwait(true);
             }
             catch (Exception ex)
             {
-                _log.Warn($"Cancelar: exceção ao chamar RPC cancelar_sessao_rfid: {ex.Message}");
+                _log.Warn($"Cancelar: exceção ao chamar cancelar_sessao via Edge Function: {ex.Message}");
             }
 
             if (!ok)
