@@ -56,11 +56,16 @@
     </Content>
   </ItemGroup>
 
-  <!-- Copia UHFAPI.dll para raiz do output (P/Invoke precisa dela lá) -->
-  <Target Name="CopyNativeDLL" AfterTargets="Build">
-    <Copy SourceFiles="$(OutputPath)runtimes\win-x86\native\UHFAPI.dll" 
-          DestinationFolder="$(OutputPath)" 
-          SkipUnchangedFiles="true" />
+  <!-- Copia DLLs nativas para a raiz do output (alguns drivers / PInvoke esperam na mesma pasta do .exe) -->
+  <Target Name="CopyNativeDLLs" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)runtimes\win-x86\native\UHFAPI.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(OutputPath)runtimes\win-x86\native\UHFControl.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyNativeDLLsOnPublish" AfterTargets="Publish">
+    <!-- No publish single-file, as DLLs podem não existir em $(PublishDir)\runtimes. Copiamos da pasta do projeto. -->
+    <Copy SourceFiles="$(ProjectDir)runtimes\win-x86\native\UHFAPI.dll" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" Condition="Exists('$(ProjectDir)runtimes\win-x86\native\UHFAPI.dll')" />
+    <Copy SourceFiles="$(ProjectDir)runtimes\win-x86\native\UHFControl.dll" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" Condition="Exists('$(ProjectDir)runtimes\win-x86\native\UHFControl.dll')" />
   </Target>
 
 </Project>
