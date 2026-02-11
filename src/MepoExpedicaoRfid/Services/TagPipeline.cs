@@ -224,6 +224,8 @@ public sealed class TagPipeline
                 EntradaId = session.EntradaId,
                 DataFabricacao = session.DataFabricacao,
                 DataValidade = session.DataValidade,
+                // ✅ Status correto por tipo (ENTRADA precisa ser "staged")
+                Status = session.Tipo == SessionType.Entrada ? "staged" : "pendente",
                 Rssi = (int)Math.Round(ev.Rssi ?? 0),
                 LidaEm = now
             };

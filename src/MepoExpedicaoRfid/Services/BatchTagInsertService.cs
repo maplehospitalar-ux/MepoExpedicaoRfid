@@ -183,8 +183,8 @@ public sealed class BatchTagInsertService : IDisposable
             sku = t.Sku,
             batch = t.Lote,
             description = t.Descricao,
-            // ✅ CORRIGIDO: Usa Status (não StatusNovo)
-            status = string.IsNullOrWhiteSpace(t.Status) ? "staged" : t.Status,
+            // ✅ ENTRADA: status precisa ser SEMPRE "staged" (check constraint do banco)
+            status = "staged",
             entrada_id = t.EntradaId,
             // ✅ CORRIGIDO: Nomes corretos das colunas
             manufacture_date = t.DataFabricacao?.ToString("yyyy-MM-dd"),

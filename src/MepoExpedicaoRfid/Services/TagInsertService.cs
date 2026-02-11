@@ -100,6 +100,7 @@ public sealed class TagInsertService
                 batch = tag.Lote,
                 manufacture_date = dataFabricacao?.ToString("yyyy-MM-dd"),
                 expiration_date = dataValidade?.ToString("yyyy-MM-dd"),
+                // ✅ ENTRADA: status precisa ser SEMPRE "staged" (check constraint do banco)
                 status = "staged",
                 entrada_id = entradaId
             };
