@@ -90,6 +90,13 @@ public sealed class TagPipeline
         => _reader.StopReadingAsync(_cts?.Token ?? CancellationToken.None);
 
     /// <summary>
+    /// Força envio imediato das tags pendentes para o MEPO (batch).
+    /// Importante chamar antes de finalizar uma sessão, para evitar finalizar com 0 tags no backend.
+    /// </summary>
+    public Task FlushPendingAsync()
+        => _batch.FlushAsync();
+
+    /// <summary>
     /// Lê UMA ÚNICA tag e fecha automaticamente.
     /// IMPORTANTE: Apenas funciona em modo R3Dll (hardware real), não em modo simulado.
     /// </summary>

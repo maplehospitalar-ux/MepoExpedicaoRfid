@@ -210,14 +210,20 @@ public partial class EntradaViewModel : ObservableObject
                 return;
             }
 
-            await _pipeline.EndReadingAsync();
+            // Para leitura + força flush antes de finalizar no backend.
+            // (Sem isso, a Edge Function pode finalizar e enxergar 0 tags.)
+            try { await _realtime.BroadcastReaderStopAsync(SessionId); } catch { }
+            try { await _pipeline.EndReadingAsync(); } catch { }
+            try { await _pipeline.FlushPendingAsync(); } catch { }
+            try { await Task.Delay(250); } catch { }
+            try { await _pipeline.FlushPendingAsync(); } catch { }
+
             var skuFinal = Sku;
             var loteFinal = Lote;
             var totalFinal = TotalTags;
 
             if (!string.IsNullOrWhiteSpace(SessionId))
             {
-                await _realtime.BroadcastReaderStopAsync(SessionId);
                 await _supabase.FinalizarSessaoEdgeAsync(SessionId, "entrada");
                 _session.EndSession();
             }
@@ -254,10 +260,14 @@ public partial class EntradaViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(SessionId)) return;
             
+            // Para leitura + força flush antes de cancelar (evita "sobrar" tag na fila)
+            try { await _realtime.BroadcastReaderStopAsync(SessionId); } catch { }
+            try { await _pipeline.EndReadingAsync(); } catch { }
+            try { await _pipeline.FlushPendingAsync(); } catch { }
+
             var ok = await _supabase.CancelarSessaoEdgeAsync(SessionId, "Cancelado pelo operador").ConfigureAwait(true);
             if (ok)
             {
-                await _realtime.BroadcastReaderStopAsync(SessionId);
                 _log.Info("⛔ Sessão de entrada cancelada.");
                 _pipeline.ResetSessionCounters();
                 _session.CancelSession("Cancelado pelo operador");

@@ -1,7 +1,7 @@
 ; Inno Setup Script — MepoExpedicaoRfid (Desktop RFID)
 ; Gera um instalador .exe a partir da pasta publish (self-contained, win-x86)
 
-#define MyAppName "MepoExpedicaoRfid"
+#define MyAppName "MAPLE DESKTOP RFID"
 #define MyAppExeName "MepoExpedicaoRfid.exe"
 #define MyAppPublisher "Maple Hospitalar"
 #define MyAppURL "https://github.com/maplehospitalar-ux/MepoExpedicaoRfid"

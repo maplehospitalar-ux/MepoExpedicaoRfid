@@ -205,11 +205,20 @@ public partial class SaidaViewModel : ObservableObject
         Finalizar = new AsyncRelayCommand(async () =>
         {
             if (string.IsNullOrWhiteSpace(SessionId)) return;
-            await _realtime.BroadcastReaderStopAsync(SessionId);
+
+            // Para leitura + força flush antes de finalizar no backend.
+            // (Sem isso, a Edge Function pode finalizar e enxergar 0 tags.)
+            try { await _realtime.BroadcastReaderStopAsync(SessionId); } catch { }
+            try { await _pipeline.EndReadingAsync(); } catch { }
+            try { await _pipeline.FlushPendingAsync(); } catch { }
+            try { await Task.Delay(250); } catch { }
+            try { await _pipeline.FlushPendingAsync(); } catch { }
+
             var ok = await _supabase.FinalizarSessaoEdgeAsync(SessionId, "saida").ConfigureAwait(true);
             if (ok)
             {
                 _log.Info("✅ Sessão finalizada.");
+                _busyReading = false;
 
                 // Se houve divergência, alerta operador (e pode virar procedimento de qualidade)
                 if (DivergenciasDetalhe.Count > 0)

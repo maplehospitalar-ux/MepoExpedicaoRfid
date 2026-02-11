@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <!-- ApplicationIcon>Assets\app.ico</ApplicationIcon -->
+    <ApplicationIcon>Assets\maple.ico</ApplicationIcon>
     <LangVersion>latest</LangVersion>
     
     <!-- CRÍTICO: Hardware RFID 32-bit -->
@@ -49,6 +49,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <Content Include="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\maple.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\maple-logo.png">
