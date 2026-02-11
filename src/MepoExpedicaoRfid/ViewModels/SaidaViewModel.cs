@@ -326,7 +326,31 @@ public partial class SaidaViewModel : ObservableObject
             _nav.Fila?.Execute(null);
         });
 
-        Limpar = new RelayCommand(() => _pipeline.ResetSessionCounters());
+        Limpar = new RelayCommand(() =>
+        {
+            _pipeline.ResetSessionCounters();
+
+            // Se não há sessão ativa, pode limpar TUDO da tela.
+            if (!_session.HasActiveSession)
+            {
+                PedidoNumero = "";
+                SessionId = "";
+                ClienteNome = "";
+                ItensResumo.Clear();
+                TotalEsperado = 0;
+                ResumoAtual.Clear();
+                DivergenciasDetalhe.Clear();
+                MensagemDivergencia = "";
+                Divergencias = 0;
+                ProgressPercent = 0;
+                SkusUnicos = 0;
+                LotesUnicos = 0;
+            }
+            else
+            {
+                _log.Warn("Limpar: existe sessão ativa. Limpei apenas as tags lidas (contador/recents).");
+            }
+        });
 
         CopiarResumo = new RelayCommand(() =>
         {

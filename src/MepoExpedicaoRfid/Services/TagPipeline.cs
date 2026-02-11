@@ -13,6 +13,11 @@ public sealed class TagPipeline
     private readonly SessionStateManager _session;
     private readonly BatchTagInsertService _batch;
     private readonly RealtimeService _realtime;
+    private readonly SupabaseService _supabase;
+
+    // Enriquecimento (saída): evita ficar DESCONHECIDO na UI
+    private readonly ConcurrentDictionary<string, byte> _enrichInFlight = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, (string sku, string lote)> _countedAs = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly Channel<RfidTagReadEventArgs> _ch = Channel.CreateUnbounded<RfidTagReadEventArgs>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
@@ -44,7 +49,7 @@ public sealed class TagPipeline
         _counts.Select(kvp => new SkuLoteGroupInfo { Sku = kvp.Key.sku, Lote = kvp.Key.lote, Quantidade = kvp.Value })
                .OrderBy(x => x.Sku).ThenBy(x => x.Lote).ToList();
 
-    public TagPipeline(IRfidReader reader, RfidConfig cfg, AppLogger log, SessionStateManager session, BatchTagInsertService batch, RealtimeService realtime)
+    public TagPipeline(IRfidReader reader, RfidConfig cfg, AppLogger log, SessionStateManager session, BatchTagInsertService batch, RealtimeService realtime, SupabaseService supabase)
     {
         _reader = reader;
         _cfg = cfg;
@@ -52,6 +57,7 @@ public sealed class TagPipeline
         _session = session;
         _batch = batch;
         _realtime = realtime;
+        _supabase = supabase;
 
         _reader.TagRead += (_, e) =>
         {
@@ -114,6 +120,8 @@ public sealed class TagPipeline
         _lastSeen.Clear();
         _tagMeta.Clear();
         _counts.Clear();
+        _countedAs.Clear();
+        _enrichInFlight.Clear();
         while (_recent.TryDequeue(out _)) { }
         SnapshotUpdated?.Invoke(this, EventArgs.Empty);
     }
@@ -190,6 +198,15 @@ public sealed class TagPipeline
             meta = ("DESCONHECIDO", "SEM_LOTE");
 
         var session = _session.CurrentSession;
+
+        // SAÍDA: se ainda está DESCONHECIDO, tenta enriquecer via MEPO/estoque em background.
+        if (session is not null && session.Tipo == SessionType.Saida &&
+            (string.Equals(meta.sku, "DESCONHECIDO", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(meta.lote, "SEM_LOTE", StringComparison.OrdinalIgnoreCase)))
+        {
+            _ = TryEnrichEpcFromEstoqueAsync(epc);
+        }
+
         if (session is not null && session.Status == SessionStatus.Ativa)
         {
             var sku = session.Tipo == SessionType.Entrada ? session.Sku : meta.sku;
@@ -223,6 +240,7 @@ public sealed class TagPipeline
             : meta.lote;
 
         _counts.AddOrUpdate((countSku, countLote), 1, (_, prev) => prev + 1);
+        _countedAs[epc] = (countSku, countLote);
 
         // ✅ Adiciona à lista Recent apenas se não existir (mantém tags únicas)
         lock (_recentLock)
@@ -239,4 +257,52 @@ public sealed class TagPipeline
 
     private static string NormalizeEpc(string epc)
         => epc.Trim().ToUpperInvariant();
+
+    private async Task TryEnrichEpcFromEstoqueAsync(string epc)
+    {
+        // não duplica requisições para o mesmo EPC
+        if (!_enrichInFlight.TryAdd(epc, 1)) return;
+
+        try
+        {
+            await _supabase.ConnectAsync(); // idempotente (vai manter token)
+
+            // Usamos o método existente de histórico (que já funciona) para enriquecer a UI: 
+            var hist = await _supabase.GetTagHistoricoAsync(epc, limit: 1).ConfigureAwait(false);
+            var sku = hist.Current?.Sku;
+            var lote = hist.Current?.Lote;
+
+            if (string.IsNullOrWhiteSpace(sku) && string.IsNullOrWhiteSpace(lote))
+                return;
+
+            var newSku = string.IsNullOrWhiteSpace(sku) ? "DESCONHECIDO" : sku.Trim().ToUpperInvariant();
+            var newLote = string.IsNullOrWhiteSpace(lote) ? "SEM_LOTE" : lote.Trim().ToUpperInvariant();
+
+            _tagMeta[epc] = (newSku, newLote);
+
+            // Ajusta contadores caso já tenhamos contado como DESCONHECIDO
+            if (_countedAs.TryGetValue(epc, out var oldGroup))
+            {
+                if (!string.Equals(oldGroup.sku, newSku, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(oldGroup.lote, newLote, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_counts.TryGetValue(oldGroup, out var oldCount) && oldCount > 0)
+                        _counts[oldGroup] = Math.Max(0, oldCount - 1);
+
+                    _counts.AddOrUpdate((newSku, newLote), 1, (_, prev) => prev + 1);
+                    _countedAs[epc] = (newSku, newLote);
+
+                    SnapshotUpdated?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Debug($"[TagPipeline] Enrich falhou para EPC={epc}: {ex.Message}");
+        }
+        finally
+        {
+            _enrichInFlight.TryRemove(epc, out _);
+        }
+    }
 }

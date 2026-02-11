@@ -115,7 +115,7 @@ public static class Bootstrapper
             }
 
             Log("Bootstrapper: Criando TagPipeline");
-            var pipeline = new TagPipeline(reader, cfg.RFID, log, sessionManager, batchService, realtime);
+            var pipeline = new TagPipeline(reader, cfg.RFID, log, sessionManager, batchService, realtime, supabase);
 
             Log("Bootstrapper: Criando StatusViewModel e navegação");
             var status = new StatusViewModel(supabase, reader, cfg, realtime, log);

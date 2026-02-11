@@ -43,7 +43,7 @@ public static class SmokeTestRunner
                 ? new R3DllReader(cfg.RFID, log)
                 : new SimulatedRfidReader(cfg.RFID, log);
 
-            var pipeline = new TagPipeline(reader, cfg.RFID, log, session, batch, realtime);
+            var pipeline = new TagPipeline(reader, cfg.RFID, log, session, batch, realtime, supabase);
             await pipeline.StartAsync();
 
             // SAÍDA
