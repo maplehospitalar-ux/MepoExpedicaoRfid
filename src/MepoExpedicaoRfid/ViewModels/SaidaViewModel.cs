@@ -220,6 +220,30 @@ public partial class SaidaViewModel : ObservableObject
                 _log.Info("✅ Sessão finalizada.");
                 _busyReading = false;
 
+                // Sugestão rápida ao operador para copiar lote/validade (quando existir)
+                try
+                {
+                    var linhas = ResumoAtual.Count > 0 ? ResumoAtual : LastResumo;
+                    var primeira = linhas.FirstOrDefault();
+                    if (primeira != null)
+                    {
+                        var txt = $"SKU: {primeira.Sku}\nDescrição: {primeira.Descricao}\nLote: {primeira.Lote}";
+                        System.Windows.Clipboard.SetText(txt);
+                        _log.Info("📋 Copiado para a área de transferência: SKU/Descrição/Lote");
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    System.Windows.MessageBox.Show(
+                        "Sessão finalizada.\n\nDica: o primeiro item lido foi copiado (SKU/Descrição/Lote) para você colar onde precisar.",
+                        "Finalizar saída",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Information);
+                }
+                catch { }
+
                 // Se houve divergência, alerta operador (e pode virar procedimento de qualidade)
                 if (DivergenciasDetalhe.Count > 0)
                 {
@@ -561,7 +585,36 @@ public partial class SaidaViewModel : ObservableObject
             ResumoAtual.Clear();
             foreach (var g in groups)
             {
+                // Se não leu nada, não polui UI com DESCONHECIDO/SEM_LOTE
+                if (TotalTags == 0) break;
+                if (g.Quantidade <= 0) continue;
+
                 var desc = ItensResumo.FirstOrDefault(x => string.Equals(x.Sku, g.Sku, StringComparison.OrdinalIgnoreCase))?.Descricao;
+                if (string.IsNullOrWhiteSpace(desc))
+                {
+                    // fallback: busca descrição no MEPO pelo SKU (async, sem travar UI)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            if (!string.IsNullOrWhiteSpace(g.Sku))
+                            {
+                                var d = await _supabase.BuscarDescricaoProdutoAsync(g.Sku).ConfigureAwait(false);
+                                if (!string.IsNullOrWhiteSpace(d))
+                                {
+                                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                                    {
+                                        // atualiza linha correspondente
+                                        var row = ResumoAtual.FirstOrDefault(r => r.Sku == g.Sku && r.Lote == g.Lote);
+                                        if (row != null) row.Descricao = d;
+                                    });
+                                }
+                            }
+                        }
+                        catch { }
+                    });
+                }
+
                 ResumoAtual.Add(new SaidaResumoLinha { Sku = g.Sku, Descricao = desc, Lote = g.Lote, Quantidade = g.Quantidade });
             }
 
@@ -582,72 +635,66 @@ public partial class SaidaViewModel : ObservableObject
             ProgressPercent = 0;
         }
 
-        // Divergência (qualidade): por SKU (mais útil que só total)
+        // Divergência (qualidade): só quando existe "esperado".
+        // Em MANUAL/sem itens esperados, não mostrar "SKU não esperado".
         DivergenciasDetalhe.Clear();
-        try
+
+        var temEsperado = TotalEsperado > 0 && ItensResumo.Count > 0;
+        if (temEsperado)
         {
-            var esperadoPorSku = ItensResumo
-                .Where(x => !string.IsNullOrWhiteSpace(x.Sku))
-                .GroupBy(x => x.Sku!.Trim().ToUpperInvariant())
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
-
-            var lidoPorSku = groups
-                .GroupBy(g => (g.Sku ?? "").Trim().ToUpperInvariant())
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
-
-            // SKU lidas não esperadas
-            foreach (var kv in lidoPorSku.OrderBy(k => k.Key))
+            try
             {
-                var sku = kv.Key;
-                if (string.IsNullOrWhiteSpace(sku)) continue;
-                if (!esperadoPorSku.TryGetValue(sku, out var exp))
+                var esperadoPorSku = ItensResumo
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Sku))
+                    .GroupBy(x => x.Sku!.Trim().ToUpperInvariant())
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
+
+                var lidoPorSku = groups
+                    .GroupBy(g => (g.Sku ?? "").Trim().ToUpperInvariant())
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
+
+                foreach (var kv in lidoPorSku.OrderBy(k => k.Key))
                 {
-                    DivergenciasDetalhe.Add($"SKU não esperado: {sku} (lido {kv.Value})");
+                    var sku = kv.Key;
+                    if (string.IsNullOrWhiteSpace(sku)) continue;
+                    if (kv.Value <= 0) continue;
+
+                    if (!esperadoPorSku.TryGetValue(sku, out var exp))
+                    {
+                        DivergenciasDetalhe.Add($"SKU não esperado: {sku} (lido {kv.Value})");
+                    }
+                    else
+                    {
+                        var diff = kv.Value - exp;
+                        if (Math.Abs(diff) > 0.0001m)
+                            DivergenciasDetalhe.Add($"SKU {sku}: esperado {exp} / lido {kv.Value}");
+                    }
                 }
-                else
+
+                foreach (var kv in esperadoPorSku.OrderBy(k => k.Key))
                 {
-                    var diff = kv.Value - exp;
-                    if (Math.Abs(diff) > 0.0001m)
-                        DivergenciasDetalhe.Add($"SKU {sku}: esperado {exp} / lido {kv.Value}");
+                    var sku = kv.Key;
+                    if (kv.Value <= 0) continue;
+                    if (!lidoPorSku.ContainsKey(sku))
+                        DivergenciasDetalhe.Add($"SKU faltando: {sku} (esperado {kv.Value})");
                 }
+
+                if (lidoPorSku.TryGetValue("DESCONHECIDO", out var unk) && unk > 0)
+                    DivergenciasDetalhe.Add($"Atenção: {unk} tags com SKU DESCONHECIDO");
             }
+            catch { }
 
-            // SKU esperadas que não apareceram
-            foreach (var kv in esperadoPorSku.OrderBy(k => k.Key))
-            {
-                var sku = kv.Key;
-                if (!lidoPorSku.ContainsKey(sku))
-                    DivergenciasDetalhe.Add($"SKU faltando: {sku} (esperado {kv.Value})");
-            }
-
-            // DESCONHECIDO é sempre suspeito
-            if (lidoPorSku.TryGetValue("DESCONHECIDO", out var unk) && unk > 0)
-                DivergenciasDetalhe.Add($"Atenção: {unk} tags com SKU DESCONHECIDO");
-        }
-        catch { }
-
-        // Mensagens resumidas
-        if (TotalEsperado > 0)
-        {
             var diffTotal = TotalTags - TotalEsperado;
             Divergencias = Math.Abs(diffTotal);
 
             if (DivergenciasDetalhe.Count > 0)
-            {
                 MensagemDivergencia = $"⚠️ Divergência detectada ({DivergenciasDetalhe.Count} itens)";
-            }
             else if (diffTotal < 0)
-            {
                 MensagemDivergencia = $"⚠️ Faltam {Divergencias} itens";
-            }
             else if (diffTotal > 0)
-            {
                 MensagemDivergencia = $"⚠️ +{Divergencias} itens excedentes";
-            }
             else
-            {
                 MensagemDivergencia = "✅ Quantidade correta";
-            }
         }
         else
         {

@@ -132,8 +132,10 @@
 
         <Separator Margin="0,12,0,12"/>
 
-        <TextBlock Text="Lido (SKU/Descrição/Lote)" FontWeight="SemiBold" Margin="0,0,0,6"/>
-        <DataGrid ItemsSource="{Binding ResumoAtual}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+        <TextBlock Text="Lido (SKU/Descrição/Lote)" FontWeight="SemiBold" Margin="0,0,0,6"
+                   Visibility="{Binding TotalTags, Converter={StaticResource GreaterThanZeroToVisibilityConverter}}"/>
+        <DataGrid ItemsSource="{Binding ResumoAtual}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                 Visibility="{Binding TotalTags, Converter={StaticResource GreaterThanZeroToVisibilityConverter}}">
           <DataGrid.Columns>
             <DataGridTextColumn Header="SKU" Binding="{Binding Sku}" Width="140"/>
             <DataGridTextColumn Header="Descrição" Binding="{Binding Descricao}" Width="*"/>
@@ -141,6 +143,19 @@
             <DataGridTextColumn Header="Qtd" Binding="{Binding Quantidade}" Width="80"/>
           </DataGrid.Columns>
         </DataGrid>
+
+        <TextBlock Text="Nenhuma tag lida ainda." Opacity="0.65" Margin="0,6,0,0">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock">
+              <Setter Property="Visibility" Value="Collapsed"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding TotalTags}" Value="0">
+                  <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
           <Button Content="Copiar" Command="{Binding CopiarResumo}" Padding="12,6" Margin="0,0,8,0"/>
