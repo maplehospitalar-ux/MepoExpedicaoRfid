@@ -16,6 +16,7 @@ public partial class EntradaViewModel : ObservableObject
     private readonly RealtimeService _realtime;
     private readonly AppLogger _log;
     private bool _busyReading = false;  // Previne múltiplas leituras simultâneas
+    private bool _busyCreatingSession = false; // Previne clique duplo em Criar Sessão
     private CancellationTokenSource? _skuLookupCts;
 
     [ObservableProperty] private string sku = "";
@@ -51,6 +52,12 @@ public partial class EntradaViewModel : ObservableObject
 
         CriarSessao = new AsyncRelayCommand(async () =>
         {
+            if (_busyCreatingSession)
+            {
+                _log.Warn("⚠️ Criação de sessão já em andamento. Aguarde...");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(Sku) || string.IsNullOrWhiteSpace(Lote))
             {
                 _log.Warn("SKU e Lote são obrigatórios para criar sessão de entrada");
@@ -71,45 +78,48 @@ public partial class EntradaViewModel : ObservableObject
                 return;
             }
 
-            _ = Task.Run(async () =>
+            _busyCreatingSession = true;
+            try
             {
-                try
+                _log.Info("Criando sessão de entrada...");
+                var result = await _supabase.CriarSessaoEntradaAsync(Sku, Lote, DataFabricacao, DataValidade);
+                if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
                 {
-                    _log.Info("Criando sessão de entrada...");
-                    var result = await _supabase.CriarSessaoEntradaAsync(Sku, Lote, DataFabricacao, DataValidade);
-                    if (!result.Success || string.IsNullOrWhiteSpace(result.SessionId))
-                    {
-                        _log.Warn($"Falha ao criar sessão de entrada: {result.ErrorMessage ?? result.Message}");
-                        return;
-                    }
-
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        SessionId = result.SessionId;
-                        EntradaId = result.EntradaId ?? "";
-                    });
-
-                    _session.StartSession(new SessionInfo
-                    {
-                        SessionId = result.SessionId,
-                        Tipo = SessionType.Entrada,
-                        Sku = Sku,
-                        Lote = Lote,
-                        EntradaId = result.EntradaId ?? "",
-                        DataFabricacao = DataFabricacao,
-                        DataValidade = DataValidade,
-                        ReaderId = _cfg.Device.Id,
-                        ClientType = _cfg.Device.ClientType
-                    });
-
-                    _pipeline.ResetSessionCounters();
-                    _log.Info($"Sessão de entrada ativa: {result.SessionId}");
+                    _log.Warn($"Falha ao criar sessão de entrada: {result.ErrorMessage ?? result.Message}");
+                    return;
                 }
-                catch (Exception ex)
+
+                // Estamos no thread do command; ainda assim garantimos atualização na UI thread
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    _log.Error($"❌ Erro ao criar sessão: {ex.Message}", ex);
-                }
-            });
+                    SessionId = result.SessionId;
+                    EntradaId = result.EntradaId ?? "";
+                });
+
+                _session.StartSession(new SessionInfo
+                {
+                    SessionId = result.SessionId,
+                    Tipo = SessionType.Entrada,
+                    Sku = Sku,
+                    Lote = Lote,
+                    EntradaId = result.EntradaId ?? "",
+                    DataFabricacao = DataFabricacao,
+                    DataValidade = DataValidade,
+                    ReaderId = _cfg.Device.Id,
+                    ClientType = _cfg.Device.ClientType
+                });
+
+                _pipeline.ResetSessionCounters();
+                _log.Info($"Sessão de entrada ativa: {result.SessionId} (entrada_id={result.EntradaId})");
+            }
+            catch (Exception ex)
+            {
+                _log.Error($"❌ Erro ao criar sessão: {ex.Message}", ex);
+            }
+            finally
+            {
+                _busyCreatingSession = false;
+            }
         });
 
         IniciarLeitura = new AsyncRelayCommand(async () =>
@@ -124,6 +134,14 @@ public partial class EntradaViewModel : ObservableObject
             if (string.IsNullOrWhiteSpace(SessionId))
             {
                 _log.Warn("Nenhuma sessão de entrada ativa. Clique em 'Criar Sessão' primeiro.");
+                return;
+            }
+
+            // ⚠️ ENTRADA: tags só vão para o MEPO se tivermos o entrada_id.
+            // Sem isso, o insert em rfid_tags_estoque falha.
+            if (string.IsNullOrWhiteSpace(EntradaId))
+            {
+                _log.Warn("Sessão criada, mas o EntradaId ainda não foi carregado. Aguarde alguns segundos e tente novamente.");
                 return;
             }
 
