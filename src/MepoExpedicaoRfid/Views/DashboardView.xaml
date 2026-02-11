@@ -43,8 +43,8 @@
           <TextBlock Text="{Binding ReadsPerSecond}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Right"/>
         </StackPanel>
       </DockPanel>
-      <TextBlock Text="Realtime: {Binding RealtimeStatus, StringFormat={}{0}}" Opacity="0.7" Margin="0,8,0,0"/>
-      <TextBlock Text="Impressora: {Binding Impressora, StringFormat={}{0}}" Opacity="0.7" Margin="0,4,0,0"/>
+      <TextBlock Text="{Binding RealtimeStatus, StringFormat=Realtime: {0}}" Opacity="0.7" Margin="0,8,0,0"/>
+      <TextBlock Text="{Binding Impressora, StringFormat=Impressora: {0}}" Opacity="0.7" Margin="0,4,0,0"/>
     </StackPanel>
   </Border>
 
