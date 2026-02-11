@@ -10,7 +10,7 @@
       <conv:GreaterThanZeroToVisibilityConverter x:Key="GreaterThanZeroToVisibilityConverter" />
 
       <ResourceDictionary.MergedDictionaries>
-        <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="Blue" SecondaryColor="Teal" />
+        <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="Green" SecondaryColor="Teal" />
         <ResourceDictionary Source="Resources/Styles.xaml" />
         <ResourceDictionary Source="Resources/ViewTemplates.xaml" />
       </ResourceDictionary.MergedDictionaries>
