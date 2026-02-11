@@ -17,13 +17,19 @@
           <Grid Grid.Row="1">
 
 <Grid>
-  <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="1*"/>
-    <ColumnDefinition Width="1*"/>
-    <ColumnDefinition Width="1*"/>
-  </Grid.ColumnDefinitions>
+  <Grid.RowDefinitions>
+    <RowDefinition Height="Auto"/>
+    <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
 
-  <Border Style="{StaticResource CardBorder}" Grid.Column="0">
+  <Grid Grid.Row="0">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="1*"/>
+      <ColumnDefinition Width="1*"/>
+      <ColumnDefinition Width="1*"/>
+    </Grid.ColumnDefinitions>
+
+    <Border Style="{StaticResource CardBorder}" Grid.Column="0">
     <StackPanel>
       <TextBlock Text="Sessão / Leitura" Style="{StaticResource Muted}"/>
       <TextBlock Text="{Binding SessaoAtual}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0"/>
@@ -78,6 +84,92 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <TextBlock Text="{Binding}" FontFamily="Consolas" Opacity="0.85" Margin="0,2,0,2"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+  </Grid>
+
+  <!-- Quadro de avisos -->
+  <Border Style="{StaticResource CardBorder}" Grid.Row="1" Margin="0,12,0,0">
+    <StackPanel>
+      <TextBlock Text="Avisos da expedição" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+      <TextBlock Text="Nenhum aviso pendente" Opacity="0.65">
+        <TextBlock.Style>
+          <Style TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding AvisosPendentes.Count}" Value="0">
+                <Setter Property="Visibility" Value="Visible"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </TextBlock.Style>
+      </TextBlock>
+
+      <ItemsControl ItemsSource="{Binding AvisosPendentes}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border CornerRadius="10" Padding="10" Margin="0,0,0,8">
+              <Border.Style>
+                <Style TargetType="Border">
+                  <Setter Property="Background" Value="#FFFBEB"/>
+                  <Setter Property="BorderBrush" Value="#F59E0B"/>
+                  <Setter Property="BorderThickness" Value="1"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsSemNf}" Value="True">
+                      <Setter Property="Background" Value="#FFF5F5"/>
+                      <Setter Property="BorderBrush" Value="#EF4444"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
+
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" FontSize="16" Margin="0,0,10,0">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Text" Value="ℹ️"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSemNf}" Value="True">
+                          <Setter Property="Text" Value="⚠️"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+
+                <StackPanel Grid.Column="1">
+                  <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
+                    <Run Text="#"/>
+                    <Run Text="{Binding Numero}"/>
+                    <Run Text="  •  "/>
+                    <Run Text="{Binding Origem}"/>
+                    <Run Text="  •  "/>
+                    <Run Text="{Binding ClienteNome}"/>
+                  </TextBlock>
+                  <TextBlock Text="{Binding Observacao}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                  <TextBlock Opacity="0.7" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap">
+                    <Run Text="Por: "/>
+                    <Run Text="{Binding EnviadoPor}"/>
+                    <Run Text="  •  "/>
+                    <Run Text="{Binding EnviadoAt}"/>
+                  </TextBlock>
+                </StackPanel>
+
+                <Button Grid.Column="2" Content="✕" Padding="10,4" Background="#00000000" BorderThickness="0"
+                        Command="{Binding DataContext.DismissAviso, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}"/>
+              </Grid>
+            </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

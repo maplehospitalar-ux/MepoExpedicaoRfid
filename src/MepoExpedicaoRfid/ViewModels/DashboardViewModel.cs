@@ -1,5 +1,10 @@
+using System.Collections.ObjectModel;
+using System.Media;
+using System.Text.Json;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MepoExpedicaoRfid.Models;
 using MepoExpedicaoRfid.Services;
 
 namespace MepoExpedicaoRfid.ViewModels;
@@ -26,6 +31,9 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private string sessaoAtual = "—";
     [ObservableProperty] private string impressora = "—";
 
+    public ObservableCollection<AvisoPedido> AvisosPendentes { get; } = new();
+    public IRelayCommand<AvisoPedido> DismissAviso { get; }
+
     private int _lastCount;
     private DateTime _lastTick = DateTime.UtcNow;
 
@@ -42,6 +50,16 @@ public partial class DashboardViewModel : ObservableObject
         _pipeline.SnapshotUpdated += (_, __) => OnSnapshot();
         _realtime.OnConnected += (_, __) => UpdateRealtimeStatus("Conectado");
         _realtime.OnDisconnected += (_, __) => UpdateRealtimeStatus("Desconectado");
+        _realtime.OnNovoPedidoFila += (_, payload) => OnNovoPedidoFila(payload);
+
+        DismissAviso = new RelayCommand<AvisoPedido>(aviso =>
+        {
+            if (aviso is null) return;
+            _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                AvisosPendentes.Remove(aviso);
+            });
+        });
 
         // Atualiza resumo da fila periodicamente (sem depender do realtime)
         _ = Task.Run(async () => await RefreshFilaLoop());
@@ -66,6 +84,56 @@ public partial class DashboardViewModel : ObservableObject
         _lastTick = now;
 
         UpdateSessao();
+    }
+
+    private void OnNovoPedidoFila(JsonElement payload)
+    {
+        try
+        {
+            // payload esperado (já chega do backend): has_aviso, aviso_tipo, observacao, numero, origem, cliente_nome...
+            var hasAviso = payload.TryGetProperty("has_aviso", out var ha) && ha.ValueKind == JsonValueKind.True;
+            if (!hasAviso) return;
+
+            var avisoTipo = payload.TryGetProperty("aviso_tipo", out var at) ? (at.GetString() ?? "") : "";
+            var observacao = payload.TryGetProperty("observacao", out var obs) ? (obs.GetString() ?? "") : "";
+
+            var aviso = new AvisoPedido
+            {
+                SessionId = payload.TryGetProperty("session_id", out var sid) ? (sid.GetString() ?? "") : "",
+                Numero = payload.TryGetProperty("numero", out var num) ? (num.GetString() ?? "") : "",
+                Origem = payload.TryGetProperty("origem", out var org) ? (org.GetString() ?? "") : "",
+                ClienteNome = payload.TryGetProperty("cliente_nome", out var cn) ? (cn.GetString() ?? "") : "",
+                Observacao = observacao,
+                AvisoTipo = avisoTipo,
+                EnviadoPor = payload.TryGetProperty("enviado_por", out var ep) ? (ep.GetString() ?? "") : "",
+                EnviadoAt = payload.TryGetProperty("enviado_at", out var ea) && ea.ValueKind == JsonValueKind.String && DateTime.TryParse(ea.GetString(), out var dt)
+                    ? dt
+                    : null,
+            };
+
+            _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                // evita duplicar pelo mesmo session_id (quando receber replay)
+                if (!string.IsNullOrWhiteSpace(aviso.SessionId) && AvisosPendentes.Any(a => a.SessionId == aviso.SessionId))
+                    return;
+
+                AvisosPendentes.Add(aviso);
+
+                // FIFO: max 20
+                while (AvisosPendentes.Count > 20)
+                    AvisosPendentes.RemoveAt(0);
+
+                // Som para SEM NF
+                if (aviso.IsSemNf)
+                {
+                    try { SystemSounds.Exclamation.Play(); } catch { }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.Debug($"Falha ao processar novo_pedido_fila (avisos): {ex.Message}");
+        }
     }
 
     private async Task RefreshFilaLoop()
