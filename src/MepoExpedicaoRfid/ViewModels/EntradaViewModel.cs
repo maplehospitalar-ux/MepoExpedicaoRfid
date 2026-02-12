@@ -30,6 +30,9 @@ public partial class EntradaViewModel : ObservableObject
     [ObservableProperty] private bool isReading = false;
 
     public ObservableCollection<string> Recent { get; } = new();
+    public ObservableCollection<TagConflict> Conflicts { get; } = new();
+
+    private readonly HashSet<string> _conflictChecked = new(StringComparer.OrdinalIgnoreCase);
 
     public IAsyncRelayCommand CriarSessao { get; }
     public IAsyncRelayCommand IniciarLeitura { get; }
@@ -37,6 +40,9 @@ public partial class EntradaViewModel : ObservableObject
     public IAsyncRelayCommand FinalizarEntrada { get; }
     public IAsyncRelayCommand Cancelar { get; }
     public IRelayCommand Limpar { get; }
+
+    public IAsyncRelayCommand<TagConflict> AtualizarTagConflito { get; }
+    public IRelayCommand<TagConflict> ExcluirConflito { get; }
 
     public EntradaViewModel(SupabaseService supabase, TagPipeline pipeline, NavigationViewModel nav, AppConfig cfg, SessionStateManager session, RealtimeService realtime, AppLogger log)
     {
@@ -287,9 +293,34 @@ public partial class EntradaViewModel : ObservableObject
             }
         });
         
+        AtualizarTagConflito = new AsyncRelayCommand<TagConflict>(async c =>
+        {
+            if (c is null) return;
+            if (string.IsNullOrWhiteSpace(c.Epc)) return;
+
+            var ok = await _supabase.UpdateTagEstoqueAsync(c.Epc, Sku, Lote, DataFabricacao, DataValidade);
+            if (ok)
+            {
+                _log.Info($"✅ Tag atualizada no estoque: {c.Epc}");
+                Conflicts.Remove(c);
+            }
+            else
+            {
+                _log.Warn($"Falha ao atualizar tag no MEPO: {c.Epc}");
+            }
+        });
+
+        ExcluirConflito = new RelayCommand<TagConflict>(c =>
+        {
+            if (c is null) return;
+            Conflicts.Remove(c);
+        });
+
         Limpar = new RelayCommand(() =>
         {
             _pipeline.ResetSessionCounters();
+            Conflicts.Clear();
+            _conflictChecked.Clear();
             Sku = "";
             Descricao = "";
             Lote = "";
@@ -372,6 +403,60 @@ public partial class EntradaViewModel : ObservableObject
             Recent.Clear();
             foreach (var t in _pipeline.RecentTags)
                 Recent.Add(t);
+
+            // Verifica conflito só para a última tag (evita flood)
+            var last = Recent.LastOrDefault();
+            if (!string.IsNullOrWhiteSpace(last))
+            {
+                _ = CheckConflictAsync(last);
+            }
         });
+    }
+
+    private async Task CheckConflictAsync(string epc)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(SessionId)) return;
+            if (string.IsNullOrWhiteSpace(EntradaId)) return;
+            if (string.IsNullOrWhiteSpace(Sku) || string.IsNullOrWhiteSpace(Lote)) return;
+
+            if (_conflictChecked.Contains(epc)) return;
+            _conflictChecked.Add(epc);
+
+            var snap = await _supabase.GetTagEstoqueSnapshotAsync(epc);
+            if (snap is null) return; // não existe -> sem conflito
+
+            var existingSku = snap.Sku ?? "";
+            var existingLote = snap.Batch ?? "";
+
+            // Se já existe e é diferente do que estamos tentando gravar, registrar conflito.
+            if (!string.Equals(existingSku, Sku, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(existingLote, Lote, StringComparison.OrdinalIgnoreCase))
+            {
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (Conflicts.Any(c => string.Equals(c.Epc, epc, StringComparison.OrdinalIgnoreCase))) return;
+                    Conflicts.Add(new TagConflict
+                    {
+                        Epc = epc,
+                        ExistingSku = snap.Sku,
+                        ExistingLote = snap.Batch,
+                        ExistingFabricacao = snap.ManufactureDate,
+                        ExistingValidade = snap.ExpirationDate,
+                        NewSku = Sku,
+                        NewLote = Lote,
+                        NewFabricacao = DataFabricacao,
+                        NewValidade = DataValidade
+                    });
+                });
+
+                _log.Warn($"⚠️ Conflito: tag {epc} já existe no estoque com SKU/Lote diferente.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Debug($"CheckConflictAsync falhou: {ex.Message}");
+        }
     }
 }

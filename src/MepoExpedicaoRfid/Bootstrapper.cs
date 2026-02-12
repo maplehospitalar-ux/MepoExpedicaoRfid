@@ -319,7 +319,37 @@ public sealed class HardwareConfig
 public sealed class RfidConfig
 {
     public string ReaderMode { get; set; } = "Simulated";
-    public int Power { get; set; } = 25;
+
+    // ===== Reader hardware configuration (optional) =====
+    // Se ApplyConfigOnConnect=false (padrão), o app NÃO altera (nem salva) configurações no reader.
+    // Isso evita “desconfigurar” o equipamento ao abrir o app.
+    public bool ApplyConfigOnConnect { get; set; } = false;
+
+    // Se true, grava configuração em EEPROM (persistente). Use com cuidado.
+    // Se false, aplica temporariamente (enquanto o app estiver rodando).
+    public bool SaveToEeprom { get; set; } = false;
+
+    // Região em string (case-insensitive): "usa", "europe", "china1", "china2", "korea", "japan".
+    // null/"" = não altera.
+    public string? Region { get; set; } = null;
+
+    // Potência em dBm (5..30). null = não altera.
+    public int? PowerDbm { get; set; } = null;
+
+    // Máscara de antena (bitmask). Ex.: 1 = ANT1, 2 = ANT2, 3 = ANT1+ANT2. null = não altera.
+    public int? AntennaMask { get; set; } = null;
+
+    // RFLink mode (depende do firmware). null = não altera.
+    public int? RFLink { get; set; } = null;
+
+    // Beep: true/false para ligar/desligar. null = não altera.
+    public bool? Beep { get; set; } = null;
+
+    // Modo de leitura EPC/TID/USER. true = setar EPC+TID (0x01). null/false = não altera.
+    public bool ApplyEpcTidMode { get; set; } = true;
+
+    // ===== App behavior =====
+    public int Power { get; set; } = 25; // (mantido por compatibilidade; preferir PowerDbm)
     public int DebounceMs { get; set; } = 500;
     public int UiUpdateMs { get; set; } = 150;
     public int BatchFlushMs { get; set; } = 300;

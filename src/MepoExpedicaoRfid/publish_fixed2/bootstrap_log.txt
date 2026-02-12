@@ -1,0 +1,78 @@
+[2026-02-11 18:56:49] Bootstrapper: Iniciando carregamento de configuração
+[2026-02-11 18:56:49] Bootstrapper: Procurando configuração em: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2\appsettings.json
+[2026-02-11 18:56:49] Bootstrapper: Configuração carregada com sucesso
+[2026-02-11 18:56:49] Bootstrapper: Criando AppLogger
+[2026-02-11 18:56:49] Bootstrapper: Criando SupabaseAuthService
+[2026-02-11 18:56:49] Bootstrapper: Iniciando autenticação
+[2026-02-11 18:56:50] Bootstrapper: Criando SupabaseService
+[2026-02-11 18:56:50] Bootstrapper: Criando TagCounterService
+[2026-02-11 18:56:50] Bootstrapper: Criando TagInsertService
+[2026-02-11 18:56:50] Bootstrapper: Criando FilaService
+[2026-02-11 18:56:50] Bootstrapper: Criando TagHistoryService
+[2026-02-11 18:56:50] Bootstrapper: Criando HeartbeatService
+[2026-02-11 18:56:50] Bootstrapper: Criando RealtimeService
+[2026-02-11 18:56:50] Bootstrapper: Criando SessionStateManager
+[2026-02-11 18:56:50] Bootstrapper: Criando OfflineBufferService
+[2026-02-11 18:56:50] Bootstrapper: Criando BatchTagInsertService
+[2026-02-11 18:56:50] Bootstrapper: Criando RfidReader
+[2026-02-11 18:56:50] Bootstrapper: Modo configurado para R3Dll, carregando...
+[2026-02-11 18:56:50] Bootstrapper: R3DllReader criado com sucesso
+[2026-02-11 18:56:50] Bootstrapper: Criando TagPipeline
+[2026-02-11 18:56:50] Bootstrapper: Criando StatusViewModel e navegação
+[2026-02-11 18:56:50] Bootstrapper: Criando MainViewModel
+[2026-02-11 18:56:50] Bootstrapper: Iniciando TagPipeline...
+[2026-02-11 18:56:51] Bootstrapper: Configurando navegação
+[2026-02-11 18:56:51] Bootstrapper: Iniciando serviços de background
+[2026-02-11 18:56:51] Bootstrapper: MainViewModel retornado com sucesso
+[2026-02-11 19:06:45] Bootstrapper: Iniciando carregamento de configuração
+[2026-02-11 19:06:45] Bootstrapper: Procurando configuração em: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2\appsettings.json
+[2026-02-11 19:06:45] Bootstrapper: Configuração carregada com sucesso
+[2026-02-11 19:06:45] Bootstrapper: Criando AppLogger
+[2026-02-11 19:06:45] Bootstrapper: Criando SupabaseAuthService
+[2026-02-11 19:06:45] Bootstrapper: Iniciando autenticação
+[2026-02-11 19:06:46] Bootstrapper: Criando SupabaseService
+[2026-02-11 19:06:46] Bootstrapper: Criando TagCounterService
+[2026-02-11 19:06:46] Bootstrapper: Criando TagInsertService
+[2026-02-11 19:06:46] Bootstrapper: Criando FilaService
+[2026-02-11 19:06:46] Bootstrapper: Criando TagHistoryService
+[2026-02-11 19:06:46] Bootstrapper: Criando HeartbeatService
+[2026-02-11 19:06:46] Bootstrapper: Criando RealtimeService
+[2026-02-11 19:06:46] Bootstrapper: Criando SessionStateManager
+[2026-02-11 19:06:46] Bootstrapper: Criando OfflineBufferService
+[2026-02-11 19:06:46] Bootstrapper: Criando BatchTagInsertService
+[2026-02-11 19:06:46] Bootstrapper: Criando RfidReader
+[2026-02-11 19:06:46] Bootstrapper: Modo configurado para R3Dll, carregando...
+[2026-02-11 19:06:46] Bootstrapper: R3DllReader criado com sucesso
+[2026-02-11 19:06:46] Bootstrapper: Criando TagPipeline
+[2026-02-11 19:06:46] Bootstrapper: Criando StatusViewModel e navegação
+[2026-02-11 19:06:46] Bootstrapper: Criando MainViewModel
+[2026-02-11 19:06:46] Bootstrapper: Iniciando TagPipeline...
+[2026-02-11 19:06:47] Bootstrapper: Configurando navegação
+[2026-02-11 19:06:47] Bootstrapper: Iniciando serviços de background
+[2026-02-11 19:06:47] Bootstrapper: MainViewModel retornado com sucesso
+[2026-02-12 10:09:51] Bootstrapper: Iniciando carregamento de configuração
+[2026-02-12 10:09:51] Bootstrapper: Procurando configuração em: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2\appsettings.json
+[2026-02-12 10:09:51] Bootstrapper: Configuração carregada com sucesso
+[2026-02-12 10:09:51] Bootstrapper: Criando AppLogger
+[2026-02-12 10:09:51] Bootstrapper: Criando SupabaseAuthService
+[2026-02-12 10:09:51] Bootstrapper: Iniciando autenticação
+[2026-02-12 10:09:51] Bootstrapper: Criando SupabaseService
+[2026-02-12 10:09:51] Bootstrapper: Criando TagCounterService
+[2026-02-12 10:09:51] Bootstrapper: Criando TagInsertService
+[2026-02-12 10:09:51] Bootstrapper: Criando FilaService
+[2026-02-12 10:09:51] Bootstrapper: Criando TagHistoryService
+[2026-02-12 10:09:51] Bootstrapper: Criando HeartbeatService
+[2026-02-12 10:09:51] Bootstrapper: Criando RealtimeService
+[2026-02-12 10:09:51] Bootstrapper: Criando SessionStateManager
+[2026-02-12 10:09:51] Bootstrapper: Criando OfflineBufferService
+[2026-02-12 10:09:51] Bootstrapper: Criando BatchTagInsertService
+[2026-02-12 10:09:51] Bootstrapper: Criando RfidReader
+[2026-02-12 10:09:51] Bootstrapper: Modo configurado para R3Dll, carregando...
+[2026-02-12 10:09:51] Bootstrapper: R3DllReader criado com sucesso
+[2026-02-12 10:09:51] Bootstrapper: Criando TagPipeline
+[2026-02-12 10:09:51] Bootstrapper: Criando StatusViewModel e navegação
+[2026-02-12 10:09:51] Bootstrapper: Criando MainViewModel
+[2026-02-12 10:09:51] Bootstrapper: Iniciando TagPipeline...
+[2026-02-12 10:09:52] Bootstrapper: Configurando navegação
+[2026-02-12 10:09:52] Bootstrapper: Iniciando serviços de background
+[2026-02-12 10:09:52] Bootstrapper: MainViewModel retornado com sucesso

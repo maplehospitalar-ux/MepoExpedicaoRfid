@@ -62,6 +62,12 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.23, )",
+              "autoReferenced": true
+            },
             "Serilog": {
               "target": "Package",
               "version": "[3.1.1, )"
@@ -77,6 +83,10 @@
             "Supabase": {
               "target": "Package",
               "version": "[0.20.3, )"
+            },
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[8.0.0, )"
             },
             "System.Net.WebSockets.Client": {
               "target": "Package",
@@ -104,6 +114,10 @@
               "version": "[8.0.23, 8.0.23]"
             },
             {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x86",
+              "version": "[8.0.23, 8.0.23]"
+            },
+            {
               "name": "Microsoft.NETCore.App.Host.win-x86",
               "version": "[8.0.23, 8.0.23]"
             },
@@ -112,7 +126,15 @@
               "version": "[8.0.23, 8.0.23]"
             },
             {
+              "name": "Microsoft.NETCore.App.Runtime.win-x86",
+              "version": "[8.0.23, 8.0.23]"
+            },
+            {
               "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.23, 8.0.23]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x86",
               "version": "[8.0.23, 8.0.23]"
             }
           ],

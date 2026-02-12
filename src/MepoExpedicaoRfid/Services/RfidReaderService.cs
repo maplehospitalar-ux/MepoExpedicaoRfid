@@ -21,6 +21,7 @@ namespace MepoExpedicaoRfid.Services;
 public sealed class RfidReaderService : IDisposable
 {
     private readonly AppLogger _log;
+    private readonly RfidConfig? _cfg;
     private readonly int _maxRetries;
     private readonly int _readDelayMs;
     
@@ -47,9 +48,10 @@ public sealed class RfidReaderService : IDisposable
     public bool IsConnected => _connected;
     public bool IsInventoryRunning => _isInventoryRunning;
     
-    public RfidReaderService(AppLogger log, int maxRetries = 3, int readDelayMs = 50)
+    public RfidReaderService(AppLogger log, RfidConfig? cfg = null, int maxRetries = 3, int readDelayMs = 50)
     {
         _log = log;
+        _cfg = cfg;
         _maxRetries = maxRetries;
         _readDelayMs = readDelayMs;
         
@@ -117,127 +119,153 @@ public sealed class RfidReaderService : IDisposable
                 _log.Warn("⚠️ Não conseguiu obter versão do firmware (continuando)");
             }
             
-            // 🔥 CONFIGURAÇÃO CRÍTICA DE HARDWARE (Base Fabrica)
-            
-            // 1. Configura antena (ativa antena 1)
-            try
+            // 🔧 Configuração de hardware (OPCIONAL)
+            // Regra: por padrão, NÃO alterar nem salvar configurações no reader ao abrir o app.
+            // Só aplica se RFID.ApplyConfigOnConnect=true.
+
+            var cfg = _cfg;
+            if (cfg?.ApplyConfigOnConnect == true)
             {
-                _log.Info("Configurando antena 1...");
-                byte[] antBuf = new byte[] { 0x01, 0x00 };  // Bit 0 = 1 (antena 1)
-                int antResult = NativeMethods.UHFSetANT(1, antBuf);  // 1 = salva em EEPROM
-                
-                if (antResult == NativeMethods.UHFAPI_SUCCESS)
+                byte save = (byte)(cfg.SaveToEeprom ? 1 : 0);
+
+                // 1) Antena
+                if (cfg.AntennaMask.HasValue)
                 {
-                    _log.Info("✅ Antena 1 configurada");
-                    
-                    // Valida configuração
+                    try
+                    {
+                        int mask = Math.Clamp(cfg.AntennaMask.Value, 0, 0xFFFF);
+                        byte[] antBuf = new byte[] { (byte)(mask & 0xFF), (byte)((mask >> 8) & 0xFF) };
+                        _log.Info($"Configurando antena mask=0x{mask:X4} (save={save})...");
+
+                        int antResult = NativeMethods.UHFSetANT(save, antBuf);
+                        if (antResult == NativeMethods.UHFAPI_SUCCESS)
+                        {
+                            _log.Info("✅ Antena configurada");
+                        }
+                        else
+                        {
+                            _log.Warn($"⚠️ Falha ao configurar antena (código {antResult})");
+                        }
+                    }
+                    catch (Exception antEx)
+                    {
+                        _log.Warn($"⚠️ Erro ao configurar antena: {antEx.Message}");
+                    }
+                }
+
+                // 2) Região
+                if (!string.IsNullOrWhiteSpace(cfg.Region))
+                {
+                    try
+                    {
+                        byte regionCode = cfg.Region.Trim().ToLowerInvariant() switch
+                        {
+                            "usa" => NativeMethods.REGION_USA,
+                            "europe" => NativeMethods.REGION_EUROPE,
+                            "china1" => NativeMethods.REGION_CHINA1,
+                            "china2" => NativeMethods.REGION_CHINA2,
+                            "korea" => NativeMethods.REGION_KOREA,
+                            "japan" => NativeMethods.REGION_JAPAN,
+                            _ => (byte)0
+                        };
+
+                        if (regionCode == 0)
+                        {
+                            _log.Warn($"⚠️ Região inválida em config: '{cfg.Region}'. Ignorando.");
+                        }
+                        else
+                        {
+                            _log.Info($"Configurando região={cfg.Region} (0x{regionCode:X2}) (save={save})...");
+                            int regionResult = NativeMethods.UHFSetRegion(save, regionCode);
+                            if (regionResult == NativeMethods.UHFAPI_SUCCESS)
+                                _log.Info("✅ Região configurada");
+                            else
+                                _log.Warn($"⚠️ Falha ao configurar região (código {regionResult})");
+                        }
+                    }
+                    catch (Exception regEx)
+                    {
+                        _log.Warn($"⚠️ Erro ao configurar região: {regEx.Message}");
+                    }
+                }
+
+                // 3) Modo EPC+TID
+                if (cfg.ApplyEpcTidMode)
+                {
+                    try
+                    {
+                        _log.Info($"Configurando modo EPC+TID (save={save})...");
+                        int modeResult = NativeMethods.UHFSetEPCTIDUSERMode(save, 0x01, 0, 0);
+                        if (modeResult == NativeMethods.UHFAPI_SUCCESS)
+                            _log.Info("✅ Modo EPC+TID configurado");
+                        else
+                            _log.Warn($"⚠️ Falha ao configurar modo (código {modeResult})");
+                    }
+                    catch (Exception modeEx)
+                    {
+                        _log.Warn($"⚠️ Erro ao configurar modo: {modeEx.Message}");
+                    }
+                }
+
+                // 4) Potência
+                if (cfg.PowerDbm.HasValue)
+                {
+                    try
+                    {
+                        byte dbm = (byte)Math.Clamp(cfg.PowerDbm.Value, 5, 30);
+                        _log.Info($"Configurando potência {dbm} dBm (save={save})...");
+                        int pwResult = NativeMethods.UHFSetPower(save, dbm);
+                        if (pwResult == NativeMethods.UHFAPI_SUCCESS)
+                            _log.Info("✅ Potência configurada");
+                        else
+                            _log.Warn($"⚠️ Falha ao configurar potência (código {pwResult})");
+                    }
+                    catch (Exception pwEx)
+                    {
+                        _log.Warn($"⚠️ Erro ao configurar potência: {pwEx.Message}");
+                    }
+                }
+
+                // 5) Beep
+                if (cfg.Beep.HasValue)
+                {
+                    try
+                    {
+                        byte enable = (byte)(cfg.Beep.Value ? 1 : 0);
+                        _log.Info($"Configurando beep={(cfg.Beep.Value ? "on" : "off")}...");
+                        int beepResult = NativeMethods.UHFSetBeep(enable);
+                        if (beepResult == NativeMethods.UHFAPI_SUCCESS)
+                            _log.Info("✅ Beep configurado");
+                    }
+                    catch (Exception beepEx)
+                    {
+                        _log.Warn($"⚠️ Erro ao configurar beep: {beepEx.Message}");
+                    }
+                }
+
+                // Valida estado atual (best-effort)
+                try
+                {
                     byte[] antCheck = new byte[2];
                     if (NativeMethods.UHFGetANT(antCheck) == NativeMethods.UHFAPI_SUCCESS)
-                    {
-                        _log.Info($"   Máscara de antenas: 0x{antCheck[0]:X2}{antCheck[1]:X2}");
-                    }
-                }
-                else
-                {
-                    _log.Warn($"⚠️ Falha ao configurar antena (código {antResult})");
-                }
-            }
-            catch (Exception antEx)
-            {
-                _log.Warn($"⚠️ Erro ao configurar antena: {antEx.Message}");
-            }
-            
-            // 2. Configura região/frequência (China1 = 920-925 MHz)
-            try
-            {
-                _log.Info("Configurando região China1 (920-925 MHz)...");
-                int regionResult = NativeMethods.UHFSetRegion(1, NativeMethods.REGION_CHINA1);
-                
-                if (regionResult == NativeMethods.UHFAPI_SUCCESS)
-                {
-                    _log.Info("✅ Região configurada");
-                    
-                    // Valida configuração
+                        _log.Info($"Reader ANT mask atual: 0x{antCheck[0]:X2}{antCheck[1]:X2}");
+
                     byte regionCheck = 0;
                     if (NativeMethods.UHFGetRegion(ref regionCheck) == NativeMethods.UHFAPI_SUCCESS)
-                    {
-                        string regionName = regionCheck switch
-                        {
-                            0x01 => "China1 (920-925 MHz)",
-                            0x02 => "China2 (840-845 MHz)",
-                            0x04 => "Europe (865-868 MHz)",
-                            0x08 => "USA (902-928 MHz)",
-                            0x16 => "Korea",
-                            0x32 => "Japan",
-                            _ => $"Desconhecida (0x{regionCheck:X2})"
-                        };
-                        _log.Info($"   Região ativa: {regionName}");
-                    }
+                        _log.Info($"Reader region atual: 0x{regionCheck:X2}");
+
+                    byte powerCheck = 0;
+                    if (NativeMethods.UHFGetPower(ref powerCheck) == NativeMethods.UHFAPI_SUCCESS)
+                        _log.Info($"Reader power atual: {powerCheck} dBm");
                 }
-                else
+                catch (Exception diagEx)
                 {
-                    _log.Warn($"⚠️ Falha ao configurar região (código {regionResult})");
+                    _log.Warn($"⚠️ Falha ao validar estado do reader: {diagEx.Message}");
                 }
-            }
-            catch (Exception regEx)
-            {
-                _log.Warn($"⚠️ Erro ao configurar região: {regEx.Message}");
-            }
-            
-            // 3. Configura modo de leitura (EPC + TID)
-            try
-            {
-                _log.Info("Configurando modo EPC+TID...");
-                int modeResult = NativeMethods.UHFSetEPCTIDUSERMode(1, 0x01, 0, 0);
-                
-                if (modeResult == NativeMethods.UHFAPI_SUCCESS)
-                {
-                    _log.Info("✅ Modo EPC+TID configurado");
-                }
-                else
-                {
-                    _log.Warn($"⚠️ Falha ao configurar modo (código {modeResult})");
-                }
-            }
-            catch (Exception modeEx)
-            {
-                _log.Warn($"⚠️ Erro ao configurar modo: {modeEx.Message}");
-            }
-            
-            // 4. Configura potência máxima
-            if (!SetPower(NativeMethods.MAX_POWER))
-            {
-                _log.Warn("⚠️ Não conseguiu definir potência máxima");
             }
             else
             {
-                // Valida potência
-                try
-                {
-                    byte powerCheck = 0;
-                    if (NativeMethods.UHFGetPower(ref powerCheck) == NativeMethods.UHFAPI_SUCCESS)
-                    {
-                        _log.Info($"   Potência configurada: {powerCheck} dBm");
-                    }
-                }
-                catch (Exception pwEx)
-                {
-                    _log.Warn($"⚠️ Erro ao validar potência: {pwEx.Message}");
-                }
-            }
-            
-            // 5. Ativa beep
-            try
-            {
-                int beepResult = NativeMethods.UHFSetBeep(1);
-                if (beepResult == NativeMethods.UHFAPI_SUCCESS)
-                {
-                    _log.Info("✅ Beep ativado");
-                }
-            }
-            catch (Exception beepEx)
-            {
-                _log.Warn($"⚠️ Erro ao ativar beep: {beepEx.Message}");
+                _log.Info("RFID.ApplyConfigOnConnect=false — mantendo configuração do reader (não altera região/potência/antena). ");
             }
             
             _connected = true;

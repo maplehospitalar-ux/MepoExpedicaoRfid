@@ -45,8 +45,8 @@ public sealed class R3DllReader : IRfidReader
             {
                 _log.Info("🔧 Iniciando conexão com Reader RFID R3...");
                 
-                // Cria serviço de leitura
-                _service = new RfidReaderService(_log);
+                // Cria serviço de leitura (com config de hardware)
+                _service = new RfidReaderService(_log, _cfg);
                 
                 // Conecta via USB
                 bool connected = _service.ConnectUsb();

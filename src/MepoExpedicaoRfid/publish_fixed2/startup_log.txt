@@ -1,0 +1,24 @@
+[2026-02-11 18:56:49] === INICIANDO MEPO Desktop-Expedição C# ===
+[2026-02-11 18:56:49] Diretório atual: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2
+[2026-02-11 18:56:49] Diretório base: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2\
+[2026-02-11 18:56:49] Aplicação iniciada com sucesso
+[2026-02-11 18:56:49] Inicializando MainViewModel via Bootstrapper...
+[2026-02-11 18:56:51] MainViewModel inicializado com sucesso
+[2026-02-11 18:56:51] MainWindow mostrada com sucesso
+[2026-02-11 19:03:33] Aplicação finalizada
+[2026-02-11 19:06:45] === INICIANDO MEPO Desktop-Expedição C# ===
+[2026-02-11 19:06:45] Diretório atual: C:\Users\user\Downloads
+[2026-02-11 19:06:45] Diretório base: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2\
+[2026-02-11 19:06:45] Aplicação iniciada com sucesso
+[2026-02-11 19:06:45] Inicializando MainViewModel via Bootstrapper...
+[2026-02-11 19:06:47] MainViewModel inicializado com sucesso
+[2026-02-11 19:06:47] MainWindow mostrada com sucesso
+[2026-02-11 19:11:21] Aplicação finalizada
+[2026-02-12 10:09:50] === INICIANDO MEPO Desktop-Expedição C# ===
+[2026-02-12 10:09:50] Diretório atual: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2
+[2026-02-12 10:09:50] Diretório base: C:\MepoExpedicaoRfid\src\MepoExpedicaoRfid\publish_fixed2\
+[2026-02-12 10:09:51] Aplicação iniciada com sucesso
+[2026-02-12 10:09:51] Inicializando MainViewModel via Bootstrapper...
+[2026-02-12 10:09:52] MainViewModel inicializado com sucesso
+[2026-02-12 10:09:52] MainWindow mostrada com sucesso
+[2026-02-12 10:10:12] Aplicação finalizada

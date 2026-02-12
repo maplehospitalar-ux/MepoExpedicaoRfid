@@ -355,6 +355,71 @@ public sealed class SupabaseService
         return result;
     }
 
+    public sealed class EstoqueTagSnapshot
+    {
+        public string? Sku { get; set; }
+        public string? Batch { get; set; }
+        public DateTime? ManufactureDate { get; set; }
+        public DateTime? ExpirationDate { get; set; }
+        public string? Status { get; set; }
+    }
+
+    public async Task<EstoqueTagSnapshot?> GetTagEstoqueSnapshotAsync(string epc, CancellationToken ct = default)
+    {
+        await EnsureConnectedAsync();
+        if (string.IsNullOrWhiteSpace(epc)) return null;
+
+        var norm = epc.Trim().ToUpperInvariant();
+        var path = $"/rest/v1/rfid_tags_estoque?select=sku,batch,manufacture_date,expiration_date,status&tag_rfid=eq.{Uri.EscapeDataString(norm)}&limit=1";
+
+        try
+        {
+            using var req = NewAuthedRequest(HttpMethod.Get, path);
+            using var resp = await _http.SendAsync(req, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            using var doc = JsonDocument.Parse(body);
+            var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+            if (first.ValueKind == JsonValueKind.Undefined) return null;
+
+            return new EstoqueTagSnapshot
+            {
+                Sku = first.TryGetProperty("sku", out var s) ? s.GetString() : null,
+                Batch = first.TryGetProperty("batch", out var b) ? b.GetString() : null,
+                ManufactureDate = first.TryGetProperty("manufacture_date", out var mf) && mf.ValueKind != JsonValueKind.Null ? mf.GetDateTime() : null,
+                ExpirationDate = first.TryGetProperty("expiration_date", out var ev) && ev.ValueKind != JsonValueKind.Null ? ev.GetDateTime() : null,
+                Status = first.TryGetProperty("status", out var st) ? st.GetString() : null,
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateTagEstoqueAsync(string epc, string sku, string lote, DateTime? fab, DateTime? val)
+    {
+        await EnsureConnectedAsync();
+        if (string.IsNullOrWhiteSpace(epc)) return false;
+
+        var norm = epc.Trim().ToUpperInvariant();
+        var path = $"/rest/v1/rfid_tags_estoque?tag_rfid=eq.{Uri.EscapeDataString(norm)}";
+        using var req = NewAuthedRequest(HttpMethod.Patch, path);
+        req.Headers.Add("Prefer", "return=minimal");
+        req.Content = new StringContent(JsonSerializer.Serialize(new
+        {
+            sku = sku?.Trim(),
+            batch = lote?.Trim(),
+            manufacture_date = fab?.ToString("yyyy-MM-dd"),
+            expiration_date = val?.ToString("yyyy-MM-dd"),
+            status = "staged"
+        }), Encoding.UTF8, "application/json");
+
+        using var resp = await _http.SendAsync(req);
+        return resp.IsSuccessStatusCode;
+    }
+
     public async Task<bool> UpdateSessaoStatusAsync(string sessionId, string status)
     {
         await EnsureConnectedAsync();
