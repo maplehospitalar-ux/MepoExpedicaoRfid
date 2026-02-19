@@ -26,6 +26,8 @@ public sealed class SupabaseService
     public string AnonKey => _cfg.AnonKey;
     public string? AccessToken => _accessToken;
     public string? AuthUserId => _authUserId;
+    public string DeviceId => _device.Id;
+    public string ClientType => _device.ClientType;
 
     public SupabaseService(SupabaseConfig cfg, AuthConfig auth, DeviceConfig device, AppLogger log)
     {
@@ -396,6 +398,68 @@ public sealed class SupabaseService
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Lookup em batch de EPCs na rfid_tags_estoque para enriquecer saída.
+    /// Retorna dicionário EPC->snapshot (somente EPCs encontrados).
+    /// </summary>
+    public async Task<Dictionary<string, EstoqueTagSnapshot>> GetTagsEstoqueSnapshotsAsync(IEnumerable<string> epcs, CancellationToken ct = default)
+    {
+        await EnsureConnectedAsync();
+        var normList = epcs
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Select(e => e.Trim().ToUpperInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var result = new Dictionary<string, EstoqueTagSnapshot>(StringComparer.OrdinalIgnoreCase);
+        if (normList.Count == 0) return result;
+
+        // PostgREST in.("A","B")
+        string InList(IEnumerable<string> vals)
+        {
+            var quoted = vals.Select(v => $"\"{v.Replace("\"", "")}\"");
+            return string.Join(",", quoted);
+        }
+
+        // limita por request para não estourar URL
+        const int chunkSize = 50;
+        for (int i = 0; i < normList.Count; i += chunkSize)
+        {
+            var chunk = normList.Skip(i).Take(chunkSize).ToList();
+            var inClause = InList(chunk);
+            var path = $"/rest/v1/rfid_tags_estoque?select=tag_rfid,sku,batch,manufacture_date,expiration_date,status&tag_rfid=in.({Uri.EscapeDataString(inClause)})";
+
+            using var req = NewAuthedRequest(HttpMethod.Get, path);
+            using var resp = await _http.SendAsync(req, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _log.Warn($"GetTagsEstoqueSnapshotsAsync falhou: {resp.StatusCode} {body}");
+                continue;
+            }
+
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) continue;
+
+            foreach (var el in doc.RootElement.EnumerateArray())
+            {
+                var epc = el.TryGetProperty("tag_rfid", out var tr) ? tr.GetString() : null;
+                if (string.IsNullOrWhiteSpace(epc)) continue;
+
+                result[epc] = new EstoqueTagSnapshot
+                {
+                    Sku = el.TryGetProperty("sku", out var s) ? s.GetString() : null,
+                    Batch = el.TryGetProperty("batch", out var b) ? b.GetString() : null,
+                    ManufactureDate = el.TryGetProperty("manufacture_date", out var mf) && mf.ValueKind != JsonValueKind.Null ? mf.GetDateTime() : null,
+                    ExpirationDate = el.TryGetProperty("expiration_date", out var ev) && ev.ValueKind != JsonValueKind.Null ? ev.GetDateTime() : null,
+                    Status = el.TryGetProperty("status", out var st) ? st.GetString() : null,
+                };
+            }
+        }
+
+        return result;
     }
 
     public async Task<bool> UpdateTagEstoqueAsync(string epc, string sku, string lote, DateTime? fab, DateTime? val)

@@ -137,30 +137,70 @@ public sealed class BatchTagInsertService : IDisposable
 
     private async Task InsertSaidaBatchAsync(List<TagItem> batch)
     {
+        // ✅ ENRIQUECIMENTO (garante que não vá sku=DESCONHECIDO quando o estoque já conhece a tag)
+        // Como o TagPipeline enriquece em background, o batch pode chegar aqui ainda com Sku/Lote vazios.
+        // Fazemos lookup em batch em rfid_tags_estoque antes do INSERT.
+        var needs = batch
+            .Where(t => string.IsNullOrWhiteSpace(t.Sku) ||
+                        string.Equals(t.Sku, "DESCONHECIDO", StringComparison.OrdinalIgnoreCase) ||
+                        string.IsNullOrWhiteSpace(t.Lote) ||
+                        string.Equals(t.Lote, "SEM_LOTE", StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Epc)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (needs.Count > 0)
+        {
+            try
+            {
+                var snapshots = await _supabase.GetTagsEstoqueSnapshotsAsync(needs);
+                foreach (var t in batch)
+                {
+                    if (snapshots.TryGetValue(t.Epc, out var snap))
+                    {
+                        // Preenche somente se o batch está desconhecido (não sobrescreve se já veio ok)
+                        if (string.IsNullOrWhiteSpace(t.Sku) || string.Equals(t.Sku, "DESCONHECIDO", StringComparison.OrdinalIgnoreCase))
+                            t.Sku = string.IsNullOrWhiteSpace(snap.Sku) ? t.Sku : snap.Sku;
+                        if (string.IsNullOrWhiteSpace(t.Lote) || string.Equals(t.Lote, "SEM_LOTE", StringComparison.OrdinalIgnoreCase))
+                            t.Lote = string.IsNullOrWhiteSpace(snap.Batch) ? t.Lote : snap.Batch;
+
+                        // Ajuda o backend (status_anterior correto)
+                        if (string.IsNullOrWhiteSpace(t.StatusAnterior) && !string.IsNullOrWhiteSpace(snap.Status))
+                            t.StatusAnterior = snap.Status;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Enriquecimento batch (saída) falhou: {ex.Message}");
+            }
+        }
+
         var payload = JsonSerializer.Serialize(batch.Select(t => new
         {
             session_id = t.SessionId,
             tag_epc = t.Epc,
-            sku = t.Sku,
-            lote = t.Lote,
+            // fallback final (ainda pode ser desconhecido se a tag realmente não existe no estoque)
+            sku = string.IsNullOrWhiteSpace(t.Sku) ? "DESCONHECIDO" : t.Sku,
+            lote = string.IsNullOrWhiteSpace(t.Lote) ? "SEM_LOTE" : t.Lote,
             // ✅ CORRIGIDO: Usa StatusAnterior (não StatusOriginal)
-            status_anterior = t.StatusAnterior ?? "available",
-            // ✅ CORRIGIDO: status permitido pela tabela rfid_saidas_audit (check constraint)
-            // Padrão: "lida" (ver DOCUMENTACAO_TECNICA_INTEGRACAO.md)
-            // Status aceitos no Supabase (exemplos encontrados): pendente, sincronizado, pending, completed
-            // Usamos "pendente" na criação do audit de saída.
+            status_anterior = string.IsNullOrWhiteSpace(t.StatusAnterior) ? "available" : t.StatusAnterior,
             status = "pendente",
-            // ✅ CORRIGIDO: Formato correto {session_id}:{tag_epc}
             idempotency_key = $"{t.SessionId}:{t.Epc}",
-            // ✅ ADICIONADO: Quantidade obrigatória
             quantidade = 1,
-            // ✅ CORRIGIDO: venda_numero com valor padrão quando NULL
             venda_numero = t.VendaNumero ?? "SEM_VENDA",
-            // ✅ CORRIGIDO: origem deve ser OMIE, CONTAAZUL, LEXOS ou MANUAL (maiúsculo)
-            origem = string.IsNullOrWhiteSpace(t.Origem) ? "MANUAL" : t.Origem.Trim().ToUpperInvariant()
+            origem = string.IsNullOrWhiteSpace(t.Origem) ? "MANUAL" : t.Origem.Trim().ToUpperInvariant(),
+            // ✅ metadata ajuda debug no MEPO
+            metadata = new
+            {
+                reader_id = _supabase.DeviceId,
+                client_type = _supabase.ClientType,
+                inserted_at = DateTime.UtcNow.ToString("o")
+            }
         }).ToList());
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_supabase.BaseUrl}/rest/v1/rfid_saidas_audit");
+        // IMPORTANTE: para upsert por chave idempotency_key (não-PK), precisamos informar on_conflict.
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_supabase.BaseUrl}/rest/v1/rfid_saidas_audit?on_conflict=idempotency_key");
         req.Headers.Add("apikey", _supabase.AnonKey);
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _supabase.AccessToken);
         req.Headers.Add("Prefer", "resolution=merge-duplicates");
@@ -192,7 +232,8 @@ public sealed class BatchTagInsertService : IDisposable
             // ❌ REMOVIDO: cmc (não existe na tabela)
         }).ToList());
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_supabase.BaseUrl}/rest/v1/rfid_tags_estoque");
+        // IMPORTANTE: para upsert por chave única tag_rfid (não-PK), precisamos informar on_conflict.
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_supabase.BaseUrl}/rest/v1/rfid_tags_estoque?on_conflict=tag_rfid");
         req.Headers.Add("apikey", _supabase.AnonKey);
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _supabase.AccessToken);
         req.Headers.Add("Prefer", "resolution=merge-duplicates");
